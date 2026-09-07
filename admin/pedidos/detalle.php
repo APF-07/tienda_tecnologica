@@ -25,9 +25,9 @@ try {
 
     // Obtener productos de este pedido
     $stmtDetalles = $conexion->prepare("SELECT dp.*, pr.nombre AS producto_nombre, pr.codigo 
-                                      FROM detalle_pedidos dp 
-                                      INNER JOIN productos pr ON dp.id_producto = pr.id_producto 
-                                      WHERE dp.id_pedido = :id");
+                                       FROM detalle_pedidos dp 
+                                       INNER JOIN productos pr ON dp.id_producto = pr.id_producto 
+                                       WHERE dp.id_pedido = :id");
     $stmtDetalles->execute(['id' => $id_pedido]);
     $detalles = $stmtDetalles->fetchAll();
 
@@ -134,6 +134,21 @@ try {
             transition: color 0.2s;
         }
         .btn-back:hover { color: #7DD3FC; text-decoration: underline; }
+        
+        /* Estilos para el contenedor del mapa en el admin */
+        .map-container {
+            margin-top: 20px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: #0B1020;
+        }
+        .map-container iframe {
+            width: 100%;
+            height: 300px;
+            border: 0;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -171,6 +186,23 @@ try {
                     <div><strong>Fecha del Pedido:</strong> <span style="color: #F8FAFC;"><?php echo $pedido['fecha_pedido']; ?></span></div>
                     <div style="grid-column: 1 / -1;"><strong>Datos de Envío:</strong> <span style="color: #F8FAFC;"><?php echo htmlspecialchars($pedido['direccion']); ?></span></div>
                 </div>
+
+                <!-- GOOGLE MAPS DE LA DIRECCIÓN DEL CLIENTE -->
+                <h3 style="font-size: 14px; color: #22D3EE; margin-bottom: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Ubicación en el Mapa</h3>
+                <div class="map-container">
+                    <?php 
+                        // Codificamos la dirección guardada en la base de datos para usarla en la URL de Google Maps
+                        $direccion_url = urlencode($pedido['direccion']);
+                    ?>
+                    <iframe 
+                        src="https://maps.google.com/?q=<?php echo $direccion_url; ?>&output=embed" 
+                        allowfullscreen="" 
+                        loading="lazy" 
+                        referrerpolicy="no-referrer-when-downgrade">
+                    </iframe>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.08); margin: 25px 0;">
 
                 <!-- CAMBIAR ESTADO -->
                 <h3 style="font-size: 14px; color: #94A3B8; margin-bottom: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Actualizar Estado del Pedido</h3>
