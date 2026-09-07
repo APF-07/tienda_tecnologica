@@ -7,7 +7,7 @@ Sistema web moderno de comercio electrónico enfocado en la comercialización de
 ## 🔗 Enlace del Sistema en Línea
 Puedes acceder y probar el sistema funcionando en producción mediante el siguiente enlace:
 * **URL de Render:** https://tienda-tecnologica-plvr.onrender.com/
-Para el ingreso al sistema del Administrador es: admin@admin.com - 123456admin
+
 ---
 
 ## 📋 Descripción General del Proyecto
@@ -34,12 +34,33 @@ La integración con los servicios de geolocalización de Google Maps (utilizada 
 ## 🔐 Credenciales de Acceso (Administrador)
 Para realizar pruebas de las funciones administrativas del sistema:
 * **Ruta de Acceso:** `/login.php`
-* **Credenciales:** Utiliza el usuario y la contraseña de administrador registrados en la base de datos de tu base de datos (Clever Cloud / XAMPP).
+* **Credenciales:** Utiliza el usuario y la contraseña de administrador registrados en la base de datos del sistema.
 
 ---
 
-## 🛠️ Stack Tecnológico
-* **Lenguaje Backend:** PHP
-* **Base de Datos Relacional:** MySQL (Alojado en Clever Cloud)
-* **Frontend e Interfaz:** HTML5, CSS3, JavaScript
-* **Despliegue:** Render
+## 🚀 Paso a Paso del Despliegue del Sistema
+
+El proceso de despliegue se estructuró en tres fases principales (Base de Datos, Servidor y Control de Versiones):
+
+### Fase 1: Configuración de la Base de Datos en la Nube (Clever Cloud)
+1. Se creó una instancia de base de datos MySQL en la plataforma de **Clever Cloud** para gestionar los datos de forma remota.
+2. Se exportó la estructura de datos local desde XAMPP e importó a la base de datos en la nube.
+3. Se obtuvieron las credenciales de conexión necesarias (`DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` y `DB_PORT`).
+
+### Fase 2: Configuración del Servidor y Despliegue (Render)
+1. Se conectó el repositorio de GitHub del proyecto con la plataforma **Render** como un Web Service.
+2. En la sección de **Environment Variables** de Render, se configuraron las variables de entorno con los datos obtenidos de Clever Cloud:
+   * `DB_HOST` = `b5y02incgntyip75n5rg-mysql.services.clever-cloud.com`
+   * `DB_NAME` = `b5y02incgntyip75n5rg`
+   * `DB_USER` = `urb7agde8bbcghep`
+   * `DB_PASSWORD` = 76GLvrteU13eknjTHO50
+   * `DB_PORT` = `3306`
+3. Se aplicó la opción de compilación y despliegue automático (*Save, rebuild, and deploy*).
+
+### Fase 3: Sincronización y Control de Versiones (Git y GitHub)
+1. Se documentaron los cambios técnicos, enlaces y manuales directamente en el archivo `README.md`.
+2. Se subieron y actualizaron los cambios al repositorio remoto ejecutando los comandos de Git:
+   ```bash
+   git add .
+   git commit -m "Agrega README detallado y documentacion de despliegue"
+   git push origin main
