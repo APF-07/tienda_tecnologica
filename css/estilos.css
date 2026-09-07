@@ -1,0 +1,194 @@
+/* =====================================================
+   ESTILOS GENERALES Y INDEX
+   ================================================     */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: #f4f6f9;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.main-container {
+    display: flex;
+    width: 900px;
+    max-width: 95%;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+/* LADO IZQUIERDO: TIENDA VIRTUAL */
+.store-section {
+    flex: 1;
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    color: #ffffff;
+    padding: 50px 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
+}
+
+.store-section h1 {
+    font-size: 28px;
+    margin-bottom: 15px;
+    font-weight: 700;
+}
+
+.store-section p {
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 30px;
+    color: #e0e6ed;
+}
+
+.btn-store {
+    display: inline-block;
+    background-color: #00c6ff;
+    color: #fff;
+    padding: 12px 25px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.btn-store:hover {
+    background-color: #0099cc;
+    transform: translateY(-2px);
+}
+
+/* LADO DERECHO: LOGIN ADMIN */
+.login-section {
+    flex: 1;
+    padding: 50px 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.login-section h2 {
+    font-size: 22px;
+    margin-bottom: 8px;
+    color: #1e3c72;
+}
+
+.login-section .subtitle {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 25px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #444;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #dcdcdc;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.3s;
+}
+
+.form-group input:focus {
+    border-color: #2a5298;
+}
+
+.btn-login {
+    width: 100%;
+    background-color: #1e3c72;
+    color: #fff;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.btn-login:hover {
+    background-color: #162b50;
+}
+
+.error-msg {
+    background-color: #ffe6e6;
+    color: #cc0000;
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 13px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+/* Responsive para celulares */
+@media (max-width: 768px) {
+    .main-container {
+        flex-direction: column;
+        width: 100%;
+        margin: 20px;
+    }
+}
+
+/* =====================================================
+   MEJORAS GENERALES DE RESPONSIVE DESIGN (PASO 22)
+   ================================================     */
+
+/* Asegurar que las tablas sean navegables en móviles sin romper la pantalla */
+table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+/* Permitir que el texto de celdas largas haga ajuste de línea en vistas amplias */
+@media (min-width: 769px) {
+    table {
+        display: table;
+        overflow-x: visible;
+        white-space: normal;
+    }
+}
+
+/* Ajustes fluidos para imágenes y contenedores en móviles */
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Optimización de botones para pantallas táctiles */
+button, .btn-store, .btn-login, .btn-add, .btn-checkout, .btn-action {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+/* Contenedores flexibles para evitar desbordamientos */
+.store-container, .main-container, .cart-container, .checkout-container, .success-container {
+    width: 100%;
+    box-sizing: border-box;
+}
