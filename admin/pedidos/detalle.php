@@ -194,12 +194,19 @@ try {
                         // Origen fijo: Tu tienda tecnológica en Cerro de Pasco
                         $origen_tienda = "Av. Circunvalacion Arenales Mz.P Lt.8, Cerro de Pasco";
                         
-                        // Destino: Dirección registrada por el cliente en la base de datos
-                        $destino_cliente = $pedido['direccion'];
+                        // Extraemos solo la parte de la dirección usando una expresión regular
+                        // Esto busca lo que esté después de "Envío:" o toma la cadena limpia si no tiene ese formato
+                        $texto_envio = $pedido['direccion'];
+                        if (preg_match('/Envío:\s*(.*)/i', $texto_envio, $coincidencias)) {
+                            $destino_limpio = trim($coincidencias[1]);
+                        } else {
+                            // Si por alguna razón no tiene la etiqueta, limpiamos por si acaso el DNI inicial
+                            $destino_limpio = preg_replace('/^DNI:\s*\d+\s*\|\s*/i', '', $texto_envio);
+                        }
                         
                         // Codificamos ambas variables para evitar errores en la URL
                         $saddr = urlencode($origen_tienda);
-                        $daddr = urlencode($destino_cliente);
+                        $daddr = urlencode($destino_limpio);
                     ?>
                     <iframe 
                         src="https://maps.google.com/maps?saddr=<?php echo $saddr; ?>&daddr=<?php echo $daddr; ?>&output=embed" 
