@@ -135,7 +135,7 @@ try {
         }
         .btn-back:hover { color: #7DD3FC; text-decoration: underline; }
         
-        /* Estilos para el contenedor del mapa en el admin */
+        /* Estilos para el contenedor del mapa de ruta */
         .map-container {
             margin-top: 20px;
             border-radius: 12px;
@@ -145,7 +145,7 @@ try {
         }
         .map-container iframe {
             width: 100%;
-            height: 300px;
+            height: 350px;
             border: 0;
             display: block;
         }
@@ -187,15 +187,22 @@ try {
                     <div style="grid-column: 1 / -1;"><strong>Datos de Envío:</strong> <span style="color: #F8FAFC;"><?php echo htmlspecialchars($pedido['direccion']); ?></span></div>
                 </div>
 
-                <!-- GOOGLE MAPS DE LA DIRECCIÓN DEL CLIENTE -->
-                <h3 style="font-size: 14px; color: #22D3EE; margin-bottom: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Ubicación en el Mapa</h3>
+                <!-- GOOGLE MAPS CON EL RECORRIDO (DESDE LA TIENDA HASTA EL CLIENTE) -->
+                <h3 style="font-size: 14px; color: #22D3EE; margin-bottom: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Recorrido de Entrega (Tienda &rarr; Cliente)</h3>
                 <div class="map-container">
                     <?php 
-                        // Codificamos la dirección guardada en la base de datos para usarla en la URL de Google Maps
-                        $direccion_url = urlencode($pedido['direccion']);
+                        // Origen fijo: Tu tienda tecnológica en Cerro de Pasco
+                        $origen_tienda = "Av. Circunvalacion Arenales Mz.P Lt.8, Cerro de Pasco";
+                        
+                        // Destino: Dirección registrada por el cliente en la base de datos
+                        $destino_cliente = $pedido['direccion'];
+                        
+                        // Codificamos ambas variables para evitar errores en la URL
+                        $saddr = urlencode($origen_tienda);
+                        $daddr = urlencode($destino_cliente);
                     ?>
                     <iframe 
-                        src="https://maps.google.com/?q=<?php echo $direccion_url; ?>&output=embed" 
+                        src="https://maps.google.com/maps?saddr=<?php echo $saddr; ?>&daddr=<?php echo $daddr; ?>&output=embed" 
                         allowfullscreen="" 
                         loading="lazy" 
                         referrerpolicy="no-referrer-when-downgrade">
