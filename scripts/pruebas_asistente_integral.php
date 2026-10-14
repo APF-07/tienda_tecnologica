@@ -1,0 +1,28 @@
+<?php
+if(PHP_SAPI!=='cli'){http_response_code(404);exit;}
+require __DIR__.'/../includes/gemini.php';
+$db=new PDO('sqlite::memory:');$db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
+$db->exec('CREATE TABLE categorias(id_categoria INTEGER,nombre TEXT,estado INTEGER); CREATE TABLE marcas(id_marca INTEGER,nombre TEXT,estado INTEGER); CREATE TABLE productos(id_producto INTEGER,codigo TEXT,nombre TEXT,descripcion TEXT,precio REAL,stock INTEGER,estado INTEGER,id_categoria INTEGER,id_marca INTEGER); CREATE TABLE clientes(id_cliente INTEGER,nombre TEXT,apellido TEXT,correo TEXT,telefono TEXT); CREATE TABLE pedidos(id_pedido INTEGER,id_cliente INTEGER,estado TEXT,total REAL,fecha_pedido TEXT,metodo_pago TEXT); CREATE TABLE detalle_pedidos(id_pedido INTEGER,id_producto INTEGER,cantidad INTEGER,precio_unitario REAL,subtotal REAL)');
+$db->exec("INSERT INTO categorias VALUES(1,'Laptops',1),(2,'Componentes',0); INSERT INTO marcas VALUES(1,'ASUS',1),(2,'Kingston',0); INSERT INTO productos VALUES(1,'P1','Laptop Uno','Descripción',100,3,1,1,1),(2,'P2','Laptop Dos','',200,10,0,1,1),(3,'P3','RAM','',50,5,1,2,2); INSERT INTO clientes VALUES(1,'Ana','Prueba','privado@example.test','999111222'),(2,'Luis','Otro','otro@example.test','999333444')");
+$fecha=date('Y-m-d').' 09:00:00';$insert=$db->prepare('INSERT INTO pedidos VALUES(?,?,?,?,?,?)');
+$insert->execute([1,1,'Entregado',220,$fecha,'Yape']);$insert->execute([2,1,'Cancelado',999,$fecha,'Tarjeta']);$insert->execute([3,1,'Pendiente',50,$fecha,'Yape']);
+$db->exec('INSERT INTO detalle_pedidos VALUES(1,1,2,100,200),(2,1,99,100,9900),(3,3,1,50,50)');
+$n=0;$check=function($ok,$mensaje)use(&$n){if(!$ok)throw new RuntimeException($mensaje);$n++;echo "OK: $mensaje\n";};
+$r=responder_asistente($db,'Productos por categoría');$check(str_contains($r['texto'],'Laptops · Activa · 2 productos (1 activos) · 3 unidades'),'Distribución por categoría cuenta activos e inactivos sin duplicar stock');
+$r=responder_asistente($db,'¿Qué marcas hay?');$check(str_contains($r['texto'],'Kingston · Inactiva'),'Las marcas inactivas también están disponibles para administración');
+$r=responder_asistente($db,'Productos inactivos');$check(str_contains($r['texto'],'Laptop Dos')&&!str_contains($r['texto'],'Laptop Uno'),'Catálogo distingue productos inactivos');
+$r=responder_asistente($db,'Producto #1');$check(str_contains($r['texto'],'Descripción')&&str_contains($r['texto'],'ASUS'),'Ficha individual incluye categoría, marca y descripción');
+$r=responder_asistente($db,'Pedido #1');$check(str_contains($r['texto'],'Laptop Uno')&&str_contains($r['texto'],'2 × S/ 100.00')&&$r['privado'],'Pedido individual usa precio histórico y evita historial externo');
+$r=responder_asistente($db,'Pedido #999');$check(str_contains($r['texto'],'No existe el pedido'),'Pedido inexistente no se inventa');
+$r=responder_asistente($db,'Correo de cliente #1');$check(str_contains($r['texto'],'privado@example.test')&&$r['privado'],'Contacto se devuelve únicamente por consulta local marcada privada');
+$r=responder_asistente($db,'Busca cliente Ana Prueba');$check(str_contains($r['texto'],'Ana Prueba')&&!str_contains($r['texto'],'Luis Otro'),'Búsqueda de cliente combina nombre y apellido con parámetros');
+$r=responder_asistente($db,'Clientes sin compras');$check(str_contains($r['texto'],'Luis Otro')&&!str_contains($r['texto'],'Ana Prueba'),'Clientes sin compras excluye clientes con pedidos confirmados');
+$r=responder_asistente($db,'Pedidos cancelados');$check(str_contains($r['texto'],'Hay 1 pedidos')&&str_contains($r['enlaces'][0]['url'],'Cancelado'),'Pedidos por estado y enlace filtrado');
+$r=responder_asistente($db,'Pedidos entregados ayer');$check(str_contains($r['texto'],'Hay 0 pedidos'),'Filtro de pedidos respeta el periodo solicitado');
+$r=responder_asistente($db,'Métodos de pago');$check(str_contains($r['texto'],'Yape · 2 pedidos')&&str_contains($r['texto'],'no pagos conciliados'),'Métodos de pago distinguen importe registrado de cobro');
+$r=responder_asistente($db,'Ventas por categoría hoy');$check(str_contains($r['texto'],'Laptops · 2 unidades · S/ 200.00')&&!str_contains($r['texto'],'9,900'),'Ventas agrupadas excluyen cancelados, pendientes y envío');
+$r=responder_asistente($db,'Segmentación de clientes',__DIR__.'/no-existe');$check(str_contains($r['texto'],'todavía no hay informe disponible'),'Sin informe de segmentación no se inventan resultados');
+$contexto=json_encode(contexto_gemini($db,__DIR__.'/no-existe'));$check(str_contains($contexto,'categorias')&&str_contains($contexto,'marcas')&&!str_contains($contexto,'privado@example.test')&&!str_contains($contexto,'999111222'),'Contexto ampliado de Gemini contiene agregados sin contactos');
+$llamadas=0;$r=responder_con_gemini($db,'Correo de cliente #1',[],function()use(&$llamadas){$llamadas++;return 'No debe llamarse';},['habilitado'=>true,'clave'=>'simulada']);$check($llamadas===0&&$r['privado'],'Las fichas privadas nunca invocan Gemini');
+$check((int)$db->query('SELECT COUNT(*) FROM pedidos')->fetchColumn()===3,'Las consultas no modifican la base');
+echo "$n comprobaciones correctas. SQLite en memoria; sin API externa.\n";

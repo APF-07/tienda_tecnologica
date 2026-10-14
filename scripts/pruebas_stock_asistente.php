@@ -1,0 +1,31 @@
+<?php
+if(PHP_SAPI!=='cli'){http_response_code(404);exit;}
+require __DIR__.'/../includes/asistente.php';
+require __DIR__.'/../includes/listados.php';
+$db=new PDO('sqlite::memory:');
+$db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
+$db->exec('CREATE TABLE categorias(id_categoria INTEGER,nombre TEXT); CREATE TABLE marcas(id_marca INTEGER,nombre TEXT); CREATE TABLE productos(id_producto INTEGER,nombre TEXT,codigo TEXT,stock INTEGER,estado INTEGER,id_categoria INTEGER,id_marca INTEGER,precio REAL)');
+$db->exec("INSERT INTO categorias VALUES(1,'Prueba'); INSERT INTO marcas VALUES(1,'Prueba')");
+$insert=$db->prepare('INSERT INTO productos VALUES(?,?,?,?,?,1,1,10)');
+for($i=1;$i<=30;$i++)$insert->execute([$i,'Producto '.$i,'P'.$i,($i-1)%6,1]);
+foreach([[31,6,1],[32,14,1],[33,15,1],[34,1,0]] as [$id,$stock,$estado])$insert->execute([$id,'Producto '.$id,'P'.$id,$stock,$estado]);
+$n=0;
+$check=function($ok,$mensaje)use(&$n){if(!$ok)throw new RuntimeException($mensaje);$n++;echo "OK: $mensaje\n";};
+$r=responder_asistente($db,'Muestra los productos con stock bajo');
+$check(str_contains($r['texto'],'Hay 30 productos')&&str_contains($r['texto'],'Muestro 20 de 30'),'Total completo separado de la vista previa');
+$check(!str_contains($r['texto'],"• Producto 34:"),'Excluye inactivos');
+$check(str_contains($r['enlaces'][0]['url'],'stock=bajo'),'Enlace filtra el rango consultado');
+$r=responder_asistente($db,'stock crítico');
+$check(str_contains($r['texto'],'Hay 32 productos'),'Incluye 6 y 14, excluye 15 en rango crítico');
+$r=responder_asistente($db,'productos agotados');
+$check(str_contains($r['texto'],'Hay 5 productos'),'Agotados incluye exclusivamente cero');
+$l=listar_admin($db,'productos',['stock'=>'bajo','estado'=>'1','orden'=>'stock']);
+$check($l['total']===30&&count($l['filas'])===25&&$l['paginas']===2,'Listado completo paginado y filtrado');
+$l=listar_admin($db,'productos',['stock'=>'bajo','estado'=>'1','orden'=>'stock','pagina'=>2]);
+$check(count($l['filas'])===5&&max(array_column($l['filas'],'stock'))===5,'Segunda página conserva rango');
+$l=listar_admin($db,'productos',['stock'=>'critico','estado'=>'1'],true);
+$check($l['total']===32&&count($l['filas'])===32,'CSV conserva filtro y exporta todas las páginas');
+$l=listar_admin($db,'productos',['stock'=>"bajo OR 1=1",'estado'=>'1']);
+$check($l['stock']===''&&$l['total']===33,'Filtro no permitido no se interpola en SQL');
+$check(intencion_asistente('stock de ASUS')==='buscar_productos','Consulta de marca conserva su intención');
+echo "$n comprobaciones correctas.\n";

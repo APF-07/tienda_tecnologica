@@ -11,7 +11,7 @@ if ($id_pedido <= 0) {
 
 try {
     // Obtener información del pedido y del cliente
-    $stmtPedido = $conexion->prepare("SELECT p.*, c.nombre AS cliente_nombre, c.apellido AS cliente_apellido, c.correo, c.telefono, c.direccion 
+    $stmtPedido = $conexion->prepare("SELECT p.*, COALESCE(p.cliente_nombre, c.nombre) AS cliente_nombre, COALESCE(p.cliente_apellido, c.apellido) AS cliente_apellido, COALESCE(p.cliente_correo, c.correo) AS correo, COALESCE(p.cliente_telefono, c.telefono) AS telefono, COALESCE(p.cliente_direccion, c.direccion) AS direccion
                                        FROM pedidos p 
                                        INNER JOIN clientes c ON p.id_cliente = c.id_cliente 
                                        WHERE p.id_pedido = :id LIMIT 1");
@@ -150,22 +150,13 @@ try {
             display: block;
         }
     </style>
+<link rel="stylesheet" href="../../css/admin-mejoras.css?v=20261013-menu">
+<link rel="stylesheet" href="../../css/experiencia.css?v=20261014"><script src="../../js/experiencia.js?v=20261014" defer></script>
+<link rel="stylesheet" href="../../css/admin-experiencia.css?v=1"><script src="../../js/admin-experiencia.js?v=1" defer></script>
 </head>
 <body>
 
-    <aside class="admin-sidebar">
-        <div class="sidebar-brand">TechStore Admin</div>
-        <ul class="sidebar-menu">
-            <li><a href="../dashboard.php">📊 Dashboard</a></li>
-            <li><a href="../productos/listar.php">📦 Productos</a></li>
-            <li><a href="../categorias/listar.php">🗂️ Categorías</a></li>
-            <li><a href="../marcas/listar.php">🏷️ Marcas</a></li>
-            <li><a href="listar.php" class="active">🛒 Pedidos</a></li>
-        </ul>
-        <div class="sidebar-footer">
-            <a href="../../logout.php" class="btn-logout">Cerrar Sesión</a>
-        </div>
-    </aside>
+    <?php render_admin_sidebar('pedidos'); ?>
 
     <div class="admin-main">
         <header class="admin-header">
@@ -185,6 +176,24 @@ try {
                     <div><strong>Teléfono:</strong> <span style="color: #F8FAFC;"><?php echo htmlspecialchars($pedido['telefono']); ?></span></div>
                     <div><strong>Fecha del Pedido:</strong> <span style="color: #F8FAFC;"><?php echo $pedido['fecha_pedido']; ?></span></div>
                     <div style="grid-column: 1 / -1;"><strong>Datos de Envío:</strong> <span style="color: #F8FAFC;"><?php echo htmlspecialchars($pedido['direccion']); ?></span></div>
+
+<!-- NUEVOS CAMPOS DE PAGO -->
+<div style="grid-column: 1 / -1; background: rgba(34, 211, 238, 0.05); padding: 15px; border-radius: 8px; border: 1px solid rgba(34, 211, 238, 0.2); margin-top: 10px; display: flex; gap: 30px; align-items: center;">
+    <div>
+        <strong style="color: #22D3EE;">Método de Pago:</strong>
+        <span style="color: #F8FAFC;"><?php echo htmlspecialchars($pedido['metodo_pago'] ?? 'No registrado'); ?></span>
+    </div>
+    <div>
+        <strong style="color: #22D3EE;">N° Operación:</strong>
+        <?php if (!empty($pedido['codigo_operacion'])): ?>
+            <span style="color: #10B981; font-weight: bold; font-size: 15px; letter-spacing: 1px; background: rgba(16, 185, 129, 0.1); padding: 4px 10px; border-radius: 6px;">
+                <?php echo htmlspecialchars($pedido['codigo_operacion']); ?>
+            </span>
+        <?php else: ?>
+            <span style="color: #94A3B8;">No aplica (Contraentrega)</span>
+        <?php endif; ?>
+    </div>
+</div>
                 </div>
 
                 <!-- GOOGLE MAPS CON EL RECORRIDO (DESDE LA TIENDA HASTA EL CLIENTE) -->
@@ -197,7 +206,7 @@ try {
                         // Extraemos solo la parte de la dirección usando una expresión regular
                         // Esto busca lo que esté después de "Envío:" o toma la cadena limpia si no tiene ese formato
                         $texto_envio = $pedido['direccion'];
-                        if (preg_match('/Envío:\s*(.*)/i', $texto_envio, $coincidencias)) {
+                        if (preg_match('/(?:^|\|)\s*Dir:\s*(.*)$/iu', $texto_envio, $coincidencias)) {
                             $destino_limpio = trim($coincidencias[1]);
                         } else {
                             // Si por alguna razón no tiene la etiqueta, limpiamos por si acaso el DNI inicial
@@ -221,6 +230,7 @@ try {
                 <!-- CAMBIAR ESTADO -->
                 <h3 style="font-size: 14px; color: #94A3B8; margin-bottom: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Actualizar Estado del Pedido</h3>
                 <form action="cambiar_estado.php" method="POST" class="status-form">
+                <?php echo csrf_campo(); ?>
                     <input type="hidden" name="id_pedido" value="<?php echo $pedido['id_pedido']; ?>">
                     <select name="estado">
                         <?php 
@@ -256,14 +266,14 @@ try {
                                 <td><code style="color: #38BDF8; background: rgba(56, 189, 248, 0.1); padding: 3px 6px; border-radius: 4px;"><?php echo htmlspecialchars($det['codigo']); ?></code></td>
                                 <td><strong style="color: #F8FAFC;"><?php echo htmlspecialchars($det['producto_nombre']); ?></strong></td>
                                 <td style="color: #CBD5E1;"><?php echo $det['cantidad']; ?></td>
-                                <td style="color: #CBD5E1;">$ <?php echo number_format($det['precio_unitario'], 2); ?></td>
-                                <td><strong style="color: #34D399;">$ <?php echo number_format($det['subtotal'], 2); ?></strong></td>
+                                <td style="color: #CBD5E1;">S/ <?php echo number_format($det['precio_unitario'], 2); ?></td>
+                                <td><strong style="color: #34D399;">S/ <?php echo number_format($det['subtotal'], 2); ?></strong></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
                 <div style="text-align: right; font-size: 18px; font-weight: 700; color: #34D399; margin-top: 15px;">
-                    Total General: $ <?php echo number_format($pedido['total'], 2); ?>
+                    Total General: S/ <?php echo number_format($pedido['total'], 2); ?>
                 </div>
             </div>
         </main>

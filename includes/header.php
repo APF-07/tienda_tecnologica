@@ -1,6 +1,6 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+    session_start(['cookie_httponly' => true, 'cookie_samesite' => 'Lax', 'cookie_secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off', 'use_strict_mode' => true]);
 }
 // Calcular total de items en el carrito para la insignia
 $total_carrito_items = isset($_SESSION['carrito']) ? array_sum(array_column($_SESSION['carrito'], 'cantidad')) : 0;
@@ -13,6 +13,7 @@ $total_carrito_items = isset($_SESSION['carrito']) ? array_sum(array_column($_SE
     <title><?php echo isset($page_title) ? $page_title : 'TechStore - Tienda Virtual'; ?></title>
     <link rel="stylesheet" href="css/tienda.css">
     <?php if (isset($extra_css)) echo $extra_css; ?>
+<link rel="stylesheet" href="css/experiencia.css?v=20261014"><script src="js/experiencia.js?v=20261014" defer></script>
 </head>
 <body>
 

@@ -1,5 +1,5 @@
 <?php
-session_start();
+session_start(['cookie_httponly' => true, 'cookie_samesite' => 'Lax', 'cookie_secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off', 'use_strict_mode' => true]);
 require_once 'config/conexion.php';
 
 $id_producto = isset($_GET['id']) ? intval($_GET['id']) : 0;
@@ -15,7 +15,7 @@ try {
                                 FROM productos p 
                                 INNER JOIN categorias c ON p.id_categoria = c.id_categoria 
                                 INNER JOIN marcas m ON p.id_marca = m.id_marca 
-                                WHERE p.id_producto = :id AND p.estado = 1 LIMIT 1");
+                                WHERE p.id_producto = :id AND p.estado = 1 AND c.estado=1 AND m.estado=1 LIMIT 1");
     $stmt->execute(['id' => $id_producto]);
     $producto = $stmt->fetch();
 
@@ -159,18 +159,13 @@ $total_carrito = isset($_SESSION['carrito']) ? array_sum(array_column($_SESSION[
             }
         }
     </style>
+<link rel="stylesheet" href="css/mejoras.css">
+<link rel="stylesheet" href="css/experiencia.css?v=20261014"><script src="js/experiencia.js?v=20261014" defer></script>
 </head>
 <body>
 
     <!-- HEADER PÚBLICO -->
-    <header class="store-header">
-        <a href="tienda.php" class="store-logo">TechStore 🚀</a>
-        <nav class="store-nav">
-            <a href="tienda.php">Catálogo</a>
-            <a href="carrito.php">🛒 Carrito <span class="cart-badge"><?php echo $total_carrito; ?></span></a>
-            <a href="index.php">Admin Panel</a>
-        </nav>
-    </header>
+    <?php render_store_header(''); ?>
 
     <div style="max-width: 1000px; margin: 20px auto 0 auto; padding: 0 20px;">
         <a href="tienda.php" class="btn-back-catalog">&larr; Volver al Catálogo</a>
@@ -181,11 +176,7 @@ $total_carrito = isset($_SESSION['carrito']) ? array_sum(array_column($_SESSION[
         
         <!-- IMAGEN -->
         <div class="product-detail-img">
-            <?php if (!empty($producto['imagen']) && file_exists('uploads/productos/' . $producto['imagen'])): ?>
-                <img src="uploads/productos/<?php echo $producto['imagen']; ?>" alt="Imagen del producto">
-            <?php else: ?>
-                <img src="uploads/productos/default.png" alt="Sin Imagen">
-            <?php endif; ?>
+            <img src="<?php echo e(imagen_producto($producto)); ?>" alt="<?php echo e($producto['nombre']); ?>">
         </div>
 
         <!-- INFORMACIÓN -->
@@ -198,7 +189,7 @@ $total_carrito = isset($_SESSION['carrito']) ? array_sum(array_column($_SESSION[
                 <span>Código: <?php echo htmlspecialchars($producto['codigo']); ?></span>
             </div>
 
-            <div class="detail-price">$ <?php echo number_format($producto['precio'], 2); ?></div>
+            <div class="detail-price">S/ <?php echo number_format($producto['precio'], 2); ?></div>
 
             <div class="detail-stock">
                 Disponibilidad: 
@@ -216,6 +207,7 @@ $total_carrito = isset($_SESSION['carrito']) ? array_sum(array_column($_SESSION[
 
             <?php if ($producto['stock'] > 0): ?>
                 <form action="carrito.php" method="POST" class="cart-form">
+                <?php echo csrf_campo(); ?>
                     <input type="hidden" name="id_producto" value="<?php echo $producto['id_producto']; ?>">
                     <input type="hidden" name="accion" value="agregar">
                     <input type="number" name="cantidad" value="1" min="1" max="<?php echo $producto['stock']; ?>">

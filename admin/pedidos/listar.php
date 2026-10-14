@@ -5,17 +5,9 @@ require_once '../../config/conexion.php';
 $mensaje = isset($_GET['msg']) ? $_GET['msg'] : '';
 $error = isset($_GET['error']) ? $_GET['error'] : '';
 
-try {
-    // Consulta con JOIN para obtener los datos básicos del cliente y el pedido
-    $sql = "SELECT p.*, c.nombre AS cliente_nombre, c.apellido AS cliente_apellido, c.correo 
-            FROM pedidos p 
-            INNER JOIN clientes c ON p.id_cliente = c.id_cliente 
-            ORDER BY p.id_pedido DESC";
-    $stmt = $conexion->query($sql);
-    $pedidos = $stmt->fetchAll();
-} catch (Exception $e) {
-    $pedidos = [];
-}
+require_once '../../includes/listados.php';
+$lista = listar_admin($conexion,'pedidos',$_GET);
+$pedidos = $lista['filas'];
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -40,22 +32,13 @@ try {
         .alert-success { background: #e8f8f5; color: #27ae60; padding: 10px 15px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
         .alert-error { background: #fde8e8; color: #c0392b; padding: 10px 15px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
     </style>
+<link rel="stylesheet" href="../../css/admin-mejoras.css?v=20261013-menu">
+<link rel="stylesheet" href="../../css/experiencia.css?v=20261014"><script src="../../js/experiencia.js?v=20261014" defer></script>
+<link rel="stylesheet" href="../../css/admin-experiencia.css?v=1"><script src="../../js/admin-experiencia.js?v=1" defer></script>
 </head>
 <body>
 
-    <aside class="admin-sidebar">
-        <div class="sidebar-brand">TechStore Admin</div>
-        <ul class="sidebar-menu">
-            <li><a href="../dashboard.php">📊 Dashboard</a></li>
-            <li><a href="../productos/listar.php">📦 Productos</a></li>
-            <li><a href="../categorias/listar.php">🗂️ Categorías</a></li>
-            <li><a href="../marcas/listar.php">🏷️ Marcas</a></li>
-            <li><a href="listar.php" class="active">🛒 Pedidos</a></li>
-        </ul>
-        <div class="sidebar-footer">
-            <a href="../../logout.php" class="btn-logout">Cerrar Sesión</a>
-        </div>
-    </aside>
+    <?php render_admin_sidebar('pedidos'); ?>
 
     <div class="admin-main">
         <header class="admin-header">
@@ -71,7 +54,7 @@ try {
                 <div class="alert-error"><?php echo htmlspecialchars($error); ?></div>
             <?php endif; ?>
 
-            <table>
+<div class="admin-toolbar"><h2>Listado de pedidos</h2><a class="btn-action" href="exportar.php?<?php echo e(http_build_query(array_intersect_key($_GET,array_flip(['q','estado','orden'])))); ?>">Descargar CSV</a></div><?php render_filtros_admin('pedidos',$lista); ?>            <table>
                 <thead>
                     <tr>
                         <th>ID Pedido</th>
@@ -94,7 +77,7 @@ try {
                                 <td><?php echo htmlspecialchars($ped['cliente_nombre'] . ' ' . $ped['cliente_apellido']); ?></td>
                                 <td><?php echo htmlspecialchars($ped['correo']); ?></td>
                                 <td><?php echo $ped['fecha_pedido']; ?></td>
-                                <td><strong>$ <?php echo number_format($ped['total'], 2); ?></strong></td>
+                                <td><strong>S/ <?php echo number_format($ped['total'], 2); ?></strong></td>
                                 <td>
                                     <span class="badge-estado estado-<?php echo $estado_clase; ?>">
                                         <?php echo $ped['estado']; ?>
@@ -111,7 +94,7 @@ try {
                         </tr>
                     <?php endif; ?>
                 </tbody>
-            </table>
+            </table><?php render_paginacion($lista['pagina'],$lista['paginas'],$lista['total']); ?>
         </main>
     </div>
 

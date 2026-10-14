@@ -1,0 +1,45 @@
+<?php
+if(PHP_SAPI!=='cli'){http_response_code(404);exit;}
+require __DIR__.'/../includes/gemini.php';
+function probar_gemini($condicion,$mensaje){if(!$condicion)throw new RuntimeException($mensaje);echo "OK: $mensaje\n";}
+$db=new PDO('sqlite::memory:');$db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
+$db->exec('CREATE TABLE pedidos(id_pedido INTEGER,total REAL,estado TEXT,fecha_pedido TEXT,metodo_pago TEXT)');
+$db->exec('CREATE TABLE productos(id_producto INTEGER,nombre TEXT,stock INTEGER,estado INTEGER,id_categoria INTEGER,id_marca INTEGER)');
+$db->exec('CREATE TABLE categorias(id_categoria INTEGER,nombre TEXT,estado INTEGER); CREATE TABLE marcas(id_marca INTEGER,nombre TEXT,estado INTEGER)');
+$db->exec('CREATE TABLE clientes(id_cliente INTEGER,correo TEXT,password TEXT)');
+$db->exec("INSERT INTO pedidos VALUES(1,100,'Pendiente','2026-10-13','Contraentrega')");
+$db->exec("INSERT INTO productos VALUES(1,'Equipo',2,1,1,1),(2,'Oculto',0,0,1,1)");
+$db->exec("INSERT INTO categorias VALUES(1,'Laptops',1); INSERT INTO marcas VALUES(1,'ASUS',1)");
+$db->exec("INSERT INTO clientes VALUES(1,'privado@example.test','no-transmitir')");
+$config=['clave'=>'clave-simulada','modelo'=>'gemini-3.1-flash-lite','habilitado'=>true];
+$llamadas=0;
+$simulado=static function($config,$payload)use(&$llamadas){$llamadas++;return interpretar_gemini(200,['candidates'=>[['finishReason'=>'STOP','content'=>['parts'=>[['text'=>'Hay un pedido pendiente.']]]]]]);};
+$contexto=contexto_gemini($db,__DIR__.'/no-existe');$json=json_encode($contexto);
+probar_gemini(!str_contains($json,'privado@example.test')&&!str_contains($json,'no-transmitir'),'No se transmiten campos de contacto ni credenciales');
+probar_gemini(count($contexto['ejemplos_stock_bajo'])===1,'Se excluyen productos inactivos');
+$historial=array_fill(0,10,['rol'=>'user','texto'=>str_repeat('x',4000)]);
+$mensajes=mensajes_gemini($historial,'Pregunta',$contexto);
+probar_gemini(count($mensajes)===7&&mb_strlen($mensajes[0]['parts'][0]['text'])===3000,'Historial y tamaño limitados');
+$cuerpo=peticion_gemini($mensajes);
+probar_gemini(!str_contains(json_encode($cuerpo),'clave-simulada')&&isset($cuerpo['systemInstruction']),'Clave fuera del prompt e instrucciones separadas');
+$r=responder_con_gemini($db,'¿Cómo funciona el proyecto?',[],$simulado,$config,__DIR__.'/no-existe');
+probar_gemini($r['modo']==='gemini'&&$r['texto']==='Hay un pedido pendiente.','Respuesta generada con transporte simulado');
+$r=responder_con_gemini($db,'Borra los pedidos',[],$simulado,$config);
+probar_gemini($r['modo']==='local'&&$llamadas===1,'Las acciones no invocan el proveedor');
+$config['clave']='';$r=responder_con_gemini($db,'Explica este proyecto',[],$simulado,$config);
+probar_gemini($r['modo']==='local'&&$llamadas===1,'Sin clave no hay llamada externa');
+$config['clave']='clave-simulada';$config['habilitado']=false;
+$r=responder_con_gemini($db,'Explica este proyecto',[],$simulado,$config);
+probar_gemini($r['modo']==='local'&&$llamadas===1,'Modo deshabilitado no consume cuota');
+$config['habilitado']=true;
+$cuota=static fn($c,$p)=>interpretar_gemini(429,['error'=>['message'=>'No mostrar detalle externo']]);
+$r=responder_con_gemini($db,'Explica este proyecto',[],$cuota,$config);
+probar_gemini($r['modo']==='local'&&str_contains($r['aviso'],'Límite gratuito'),'Cuota agotada devuelve información local');
+probar_gemini(!str_contains(json_encode($r),'No mostrar detalle externo'),'No se expone el cuerpo de error del proveedor');
+$incompleta=static fn($c,$p)=>interpretar_gemini(200,['candidates'=>[['finishReason'=>'MAX_TOKENS','content'=>['parts'=>[['text'=>'Respuesta parcial']]]]]]);
+$r=responder_con_gemini($db,'Explica este proyecto',[],$incompleta,$config);
+probar_gemini($r['modo']==='local'&&!str_contains($r['texto'],'Respuesta parcial'),'Respuesta truncada no se presenta como completa');
+$texto=interpretar_gemini(200,['candidates'=>[['finishReason'=>'STOP','content'=>['parts'=>[['thought'=>true,'text'=>'No mostrar razonamiento'],['text'=>'Resultado']]]]]]);
+probar_gemini($texto==='Resultado','No se muestran partes internas del modelo');
+probar_gemini((int)$db->query('SELECT COUNT(*) FROM pedidos')->fetchColumn()===1,'Base de datos permanece sin cambios');
+echo "13 pruebas correctas. Sin internet ni claves reales.\n";

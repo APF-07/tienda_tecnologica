@@ -1,66 +1,104 @@
-# Tienda Tecnológica 🛒💻
+# TechStore · Tienda tecnológica
 
-Sistema web moderno de comercio electrónico enfocado en la comercialización de productos tecnológicos, optimizado para ofrecer una experiencia de usuario fluida, gestión eficiente de inventario y geolocalización integrada.
+Proyecto PHP 8.2 y MySQL/MariaDB para catálogo, carrito, pedidos y administración.
 
----
+## Iniciar en XAMPP
 
-## 🔗 Enlace del Sistema en Línea
-Puedes acceder y probar el sistema funcionando en producción mediante el siguiente enlace:
-* **URL de Render:** https://tienda-tecnologica-plvr.onrender.com/
+1. Inicia Apache y MySQL desde XAMPP.
+2. Abre `http://localhost:8080/tienda_tecnologica/tienda.php` para el catálogo y `http://localhost:8080/tienda_tecnologica/index.php` para el acceso administrativo.
+3. Para una instalación nueva, crea la base `tienda_tecnologica` e importa `database/tienda_tecnologica.sql`. Ese archivo contiene estructura y datos iniciales, no el volcado con información personal.
+4. Si ya tienes una base existente, conserva sus datos y ejecuta desde esta carpeta:
 
----
+```powershell
+C:/xampp/php/php.exe scripts/actualizar_esquema.php
+```
 
-## 📋 Descripción General del Proyecto
-Este sistema fue desarrollado bajo una arquitectura web robusta, permitiendo cubrir el ciclo completo de una tienda virtual. Entre sus características principales destacan:
-* **Gestión de Catálogo y Stock:** Control de productos tecnológicos (laptops, componentes, periféricos) con categorías dinámicas.
-* **Carrito y Ventas:** Flujo interactivo de compras, cálculo de subtotales y procesamiento de pedidos.
-* **Panel de Administración:** Módulo privado para la administración de usuarios, productos y visualización de registros.
-* **Seguridad y Control de Acceso:** Autenticación de usuarios mediante sesiones y encriptación de credenciales.
+La migración agrega los campos que falten en pedidos y conserva los datos de entrega históricos. Es repetible. Ya se aplicó en la base local durante esta revisión.
 
----
+## Configuración
 
-## 🗺️ Ubicación y Configuración de la API de Google Maps
-La integración con los servicios de geolocalización de Google Maps (utilizada para mostrar sucursales y puntos de entrega a los clientes) está estructurada en los siguientes componentes del código fuente:
+La conexión acepta `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` y `DB_PASSWORD` como variables de entorno. Los valores locales predeterminados son localhost, 3306, tienda_tecnologica, root y contraseña vacía. En producción utiliza un usuario propio de MySQL y contraseña.
 
-* **Interfaz de Usuario (Vista):** 
-  * Ubicada en la carpeta `views/` (específicamente en `contacto.php` o el módulo de sucursales), donde se dibuja el contenedor HTML del mapa (`<div id="map"></div>`).
-* **Lógica del Cliente (JavaScript):** 
-  * Se encuentra en el archivo `assets/js/mapa.js` o scripts embebidos encargados de invocar la librería asíncrona de Google Maps, instanciar el objeto `google.maps.Map` y colocar los marcadores interactivos.
-* **Gestión de Credenciales (API Key):** 
-  * La clave secreta de la API se configura de forma segura mediante variables de entorno en el servidor o se centraliza en el archivo de configuración de la conexión del sistema.
+- `GOOGLE_MAPS_API_KEY`: opcional; se lee de `.env` o del entorno del servidor y activa el autocompletado de direcciones en el checkout. Configura las restricciones de dominio y API en Google Cloud. Sin clave, la dirección se ingresa manualmente.
+- `BCP_CUENTA`, `BCP_CCI`, `BCP_TITULAR`: datos de transferencia. Con `APP_DEMO=false`, la transferencia queda deshabilitada si no hay cuenta configurada.
+- `APP_DEMO`: configuración interna para la ejecución académica local (predeterminado: true). No añade avisos a la interfaz.
 
----
+La moneda de presentación es soles (S/). Los importes originales se conservaron, sin conversión de divisas. Yape/Plin y transferencias son métodos manuales: registrar un pedido no acredita un abono bancario.
 
-## 🔐 Credenciales de Acceso (Administrador)
-Para realizar pruebas de las funciones administrativas del sistema:
-* **Ruta de Acceso:** `/login.php`
-* **Credenciales:** Utiliza el usuario y la contraseña de administrador registrados en la base de datos del sistema.
+Para una instalación nueva, el usuario de ejemplo es `admin@tienda.com`, con contraseña inicial `password`, correspondiente al hash del SQL. Cámbiala antes de publicar. La base existente conserva sus propios usuarios.
 
----
+## Flujo de compra
 
-## 🚀 Paso a Paso del Despliegue del Sistema
+El carrito se guarda en sesión. El checkout valida datos y consulta precio, disponibilidad y stock bajo bloqueo. Si cambió el precio, pide revisar y confirmar el nuevo total. El pedido, sus detalles y la disminución de stock se guardan en una transacción.
 
-El proceso de despliegue se estructuró en tres fases principales (Base de Datos, Servidor y Control de Versiones):
+Un correo puede comprar varias veces; cada pedido conserva su propio nombre, correo, teléfono y dirección de entrega. Cancelar devuelve stock una vez; reactivar exige existencias suficientes. Para rastrear se solicita número de pedido y correo de compra. La página de confirmación requiere una sesión autorizada para ese pedido.
 
-### Fase 1: Configuración de la Base de Datos en la Nube (Clever Cloud)
-1. Se creó una instancia de base de datos MySQL en la plataforma de **Clever Cloud** para gestionar los datos de forma remota.
-2. Se exportó la estructura de datos local desde XAMPP e importó a la base de datos en la nube.
-3. Se obtuvieron las credenciales de conexión necesarias (`DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` y `DB_PORT`).
+## Machine Learning y analítica
 
-### Fase 2: Configuración del Servidor y Despliegue (Render)
-1. Se conectó el repositorio de GitHub del proyecto con la plataforma **Render** como un Web Service.
-2. En la sección de **Environment Variables** de Render, se configuraron las variables de entorno con los datos obtenidos de Clever Cloud:
-   * `DB_HOST` = `b5y02incgntyip75n5rg-mysql.services.clever-cloud.com`
-   * `DB_NAME` = `b5y02incgntyip75n5rg`
-   * `DB_USER` = `urb7agde8bbcghep`
-   * `DB_PASSWORD` = 76GLvrteU13eknjTHO50
-   * `DB_PORT` = `3306`
-3. Se aplicó la opción de compilación y despliegue automático (*Save, rebuild, and deploy*).
+Los indicadores operativos se consultan directamente en MySQL/MariaDB. Los modelos Python producen informes evaluados que aparecen junto a esos indicadores:
 
-### Fase 3: Sincronización y Control de Versiones (Git y GitHub)
-1. Se documentaron los cambios técnicos, enlaces y manuales directamente en el archivo `README.md`.
-2. Se subieron y actualizaron los cambios al repositorio remoto ejecutando los comandos de Git:
-   ```bash
-   git add .
-   git commit -m "Agrega README detallado y documentacion de despliegue"
-   git push origin main
+- **Inventario:** K-Means sobre precio y stock, con log1p, StandardScaler y selección de 2 a 5 grupos por Silhouette. Incluye reposición orientativa según ventas observadas.
+- **Clientes:** segmentación RFM (recencia, frecuencia y monto) con K-Means y perfiles de cada grupo.
+- **Pedidos y ventas:** Random Forest Regressor y Ridge frente a referencias semanales y mediana histórica. Se separan entrenamiento, validación y prueba temporal; se comparan MAE, RMSE y R². La prueba no se utiliza para elegir el modelo.
+- **Cancelaciones:** Random Forest Classifier entrenado solo con pedidos entregados o cancelados. La validación separa clientes entre entrenamiento y prueba. Reporta F1, exactitud balanceada, ROC AUC y Brier.
+
+Los pronósticos usan el último día completo como corte para evitar interpretar un día en curso como un día sin ventas. La fecha de entrenamiento y el corte aparecen en el panel. Las métricas corresponden al histórico disponible; una referencia estadística puede superar al ML y en ese caso se recomienda la referencia.
+
+Instala las dependencias en el Python que utiliza Apache:
+
+```powershell
+python -m pip install -r ml/requirements.txt
+python ml/procesar_todas_predicciones.py
+```
+
+Desde el administrador también puedes usar **Entrenar y actualizar**. La variable `PYTHON_BIN` permite seleccionar el ejecutable si Apache no encuentra el mismo Python que la terminal. Los resultados se guardan mediante reemplazo atómico en `ml/cache_todos_*.json`; los modelos se conservan en `ml/artefactos/`. Las rutas son relativas al proyecto y la conexión utiliza `DB_*`.
+
+### Histórico académico
+
+Se agregó un lote de 270 días, de 2026-01-15 a 2026-10-11: 180 clientes y 5,640 pedidos. Los registros anteriores se conservaron. El generador representa crecimiento, fines de semana, fin de mes, preferencias de clientes y cancelaciones probabilísticas basadas en características del pedido.
+
+```powershell
+python ml/generar_historial.py
+```
+
+La tabla `historial_lotes` registra la carga y evita duplicarla. Es una importación de operaciones históricas cerradas y no descuenta las existencias actuales. El generador utiliza una semilla fija y guarda su configuración; se documenta como conjunto académico y no como evidencia de ventas reales. Consulta [la metodología](docs/ML.md) para la sustentación.
+
+## Catálogo y administración
+
+Las categorías y marcas de los productos se normalizaron con respaldo. El generador de productos y los formularios administrativos respetan las reglas de `includes/catalogo.php`; por ejemplo, una laptop no se guarda como componente y los celulares del catálogo actual corresponden a marcas compatibles. Los respaldos se guardan en `database/respaldo_catalogo_*.json`.
+
+Productos, pedidos y clientes tienen búsqueda, filtros, paginación y exportación CSV. La ficha del cliente permite consultar sus pedidos. Las imágenes faltantes utilizan ilustraciones por categoría.
+
+## Comprobaciones
+
+```powershell
+C:/xampp/php/php.exe scripts/diagnostico.php
+C:/xampp/php/php.exe scripts/pruebas.php
+python -m unittest discover -s tests -p test_modelos.py
+```
+
+Las pruebas crean tablas temporales que ocultan las reales únicamente en la conexión de prueba. Comprueban compras repetidas, historial de entrega, stock, cancelaciones, precios cambiados, productos inactivos, CSV y analítica. No insertan compras en las tablas reales.
+
+## Despliegue
+
+El Dockerfile actual utiliza PHP 8.2 con Apache y PDO MySQL. Para entrenar desde un despliegue Docker también se debe instalar Python con `ml/requirements.txt` y configurar `PYTHON_BIN`; el entrenamiento desde la web fue comprobado en XAMPP local. Configura las variables de entorno y ejecuta la migración antes de desplegar el código actualizado sobre una base existente. Las carpetas de imágenes deben contar con almacenamiento persistente si tu proveedor utiliza un sistema de archivos efímero.
+
+Las credenciales de servicios externos se configuran mediante variables de entorno y no se incluyen en esta documentación.
+
+## Asistente del administrador
+
+Abre `http://localhost:8080/tienda_tecnologica/admin/asistente/index.php` o selecciona **Asistente** en el menú lateral. El chatbot incorpora una conexión opcional con **Gemini 3.1 Flash-Lite** y consultas locales de respaldo. Configura `GEMINI_API_KEY` en `.env` para habilitar conversación libre. Para coste cero, utiliza un proyecto Free Tier sin facturación habilitada. Consulta la [guía de activación y privacidad](docs/GEMINI.md).
+
+Las consultas locales permiten ver pedidos pendientes, estados, últimos pedidos, clientes, stock bajo y resultados ML. Gemini recibe un resumen limitado de estadísticas e informes ML y hasta tres intercambios de conversación. No ejecuta SQL ni modifica registros. Requiere sesión de administrador y CSRF. Cada respuesta identifica si fue generada por Gemini o por una consulta local y muestra su fuente y fecha.
+
+Pruebas de consultas locales (MySQL con tablas temporales):
+
+```powershell
+C:/xampp/php/php.exe scripts/pruebas_asistente.php
+```
+
+Pruebas de integración Gemini sin conexión externa ni claves reales (SQLite temporal y respuestas simuladas):
+
+```powershell
+C:/xampp/php/php.exe scripts/pruebas_gemini.php
+```

@@ -2,7 +2,8 @@
 // =====================================================
 // SCRIPT DE CIERRE DE SESIÓN (LOGOUT)
 // =====================================================
-session_start();
+require_once __DIR__ . '/includes/seguridad.php';
+exigir_post();
 
 // Destruir todas las variables de sesión
 $_SESSION = array();

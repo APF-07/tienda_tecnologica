@@ -5,18 +5,9 @@ require_once '../../config/conexion.php';
 $mensaje = isset($_GET['msg']) ? $_GET['msg'] : '';
 $error = isset($_GET['error']) ? $_GET['error'] : '';
 
-try {
-    // Consulta con JOIN para obtener el nombre de la categoría y de la marca asociadas
-    $sql = "SELECT p.*, c.nombre AS categoria, m.nombre AS marca 
-            FROM productos p 
-            INNER JOIN categorias c ON p.id_categoria = c.id_categoria 
-            INNER JOIN marcas m ON p.id_marca = m.id_marca 
-            ORDER BY p.id_producto DESC";
-    $stmt = $conexion->query($sql);
-    $productos = $stmt->fetchAll();
-} catch (Exception $e) {
-    $productos = [];
-}
+require_once '../../includes/listados.php';
+$lista = listar_admin($conexion,'productos',$_GET);
+$productos = $lista['filas'];
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -38,22 +29,13 @@ try {
         .alert-success { background: #e8f8f5; color: #27ae60; padding: 10px 15px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
         .alert-error { background: #fde8e8; color: #c0392b; padding: 10px 15px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
     </style>
+<link rel="stylesheet" href="../../css/admin-mejoras.css?v=20261013-menu">
+<link rel="stylesheet" href="../../css/experiencia.css?v=20261014"><script src="../../js/experiencia.js?v=20261014" defer></script>
+<link rel="stylesheet" href="../../css/admin-experiencia.css?v=1"><script src="../../js/admin-experiencia.js?v=1" defer></script>
 </head>
 <body>
 
-    <aside class="admin-sidebar">
-        <div class="sidebar-brand">TechStore Admin</div>
-        <ul class="sidebar-menu">
-            <li><a href="../dashboard.php">📊 Dashboard</a></li>
-            <li><a href="listar.php" class="active">📦 Productos</a></li>
-            <li><a href="../categorias/listar.php">🗂️ Categorías</a></li>
-            <li><a href="../marcas/listar.php">🏷️ Marcas</a></li>
-            <li><a href="../pedidos/listar.php">🛒 Pedidos</a></li>
-        </ul>
-        <div class="sidebar-footer">
-            <a href="../../logout.php" class="btn-logout">Cerrar Sesión</a>
-        </div>
-    </aside>
+    <?php render_admin_sidebar('productos'); ?>
 
     <div class="admin-main">
         <header class="admin-header">
@@ -69,7 +51,7 @@ try {
                 <div class="alert-error"><?php echo htmlspecialchars($error); ?></div>
             <?php endif; ?>
 
-            <a href="agregar.php" class="btn-add">+ Nuevo Producto</a>
+            <div class="admin-toolbar"><a href="agregar.php" class="btn-add">+ Nuevo producto</a><a class="btn-action" href="exportar.php?<?php echo e(http_build_query(array_intersect_key($_GET,array_flip(['q','estado','orden','stock'])))); ?>">Descargar CSV</a></div><?php render_filtros_admin('productos',$lista); ?>
 
             <table>
                 <thead>
@@ -90,17 +72,13 @@ try {
                         <?php foreach ($productos as $prod): ?>
                             <tr>
                                 <td>
-                                    <?php if (!empty($prod['imagen']) && file_exists('../../uploads/productos/' . $prod['imagen'])): ?>
-                                        <img src="../../uploads/productos/<?php echo $prod['imagen']; ?>" class="product-img" alt="Prod">
-                                    <?php else: ?>
-                                        <img src="../../uploads/productos/default.png" class="product-img" alt="S/I">
-                                    <?php endif; ?>
+                                    <img src="<?php echo e(imagen_producto($prod)); ?>" class="product-img" alt="<?php echo e($prod['nombre']); ?>" loading="lazy">
                                 </td>
                                 <td><code><?php echo htmlspecialchars($prod['codigo']); ?></code></td>
                                 <td><strong><?php echo htmlspecialchars($prod['nombre']); ?></strong></td>
                                 <td><?php echo htmlspecialchars($prod['categoria']); ?></td>
                                 <td><?php echo htmlspecialchars($prod['marca']); ?></td>
-                                <td>$ <?php echo number_format($prod['precio'], 2); ?></td>
+                                <td>S/ <?php echo number_format($prod['precio'], 2); ?></td>
                                 <td>
                                     <?php if ($prod['stock'] > 5): ?>
                                         <span style="color: #27ae60; font-weight: 600;"><?php echo $prod['stock']; ?></span>
@@ -119,17 +97,17 @@ try {
                                 </td>
                                 <td>
                                     <a href="editar.php?id=<?php echo $prod['id_producto']; ?>" class="btn-action btn-edit">Editar</a>
-                                    <a href="eliminar.php?id=<?php echo $prod['id_producto']; ?>" class="btn-action btn-delete" onclick="return confirm('¿Estás seguro de eliminar este producto?');">Eliminar</a>
+                                    <form action="eliminar.php" method="POST" class="inline-action" onsubmit="return confirm('¿Eliminar este registro?');"><?php echo csrf_campo(); ?><input type="hidden" name="id" value="<?php echo $prod['id_producto']; ?>"><button type="submit" class="btn-action btn-delete">Eliminar</button></form>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="9" style="text-align: center; color: #777;">No hay productos registrados.</td>
+                            <td colspan="9" style="text-align: center; color: #777;">No hay productos que coincidan con estos filtros.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
-            </table>
+            </table><?php render_paginacion($lista['pagina'],$lista['paginas'],$lista['total']); ?>
         </main>
     </div>
 

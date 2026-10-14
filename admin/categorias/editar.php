@@ -1,57 +1,17 @@
 <?php
 require_once '../../includes/verificar_admin.php';
 require_once '../../config/conexion.php';
-
-$error = '';
-$id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-
-if ($id <= 0) {
-    header('Location: listar.php');
-    exit();
-}
-
-// Procesar actualización
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nombre = trim($_POST['nombre']);
-    $descripcion = trim($_POST['descripcion']);
-    $estado = isset($_POST['estado']) ? intval($_POST['estado']) : 1;
-
-    if (empty($nombre)) {
-        $error = 'El nombre de la categoría es obligatorio.';
-    } else {
-        try {
-            $stmt = $conexion->prepare("UPDATE categorias SET nombre = :nombre, descripcion = :descripcion, estado = :estado WHERE id_categoria = :id");
-            $stmt->execute([
-                'nombre' => $nombre,
-                'descripcion' => $descripcion,
-                'estado' => $estado,
-                'id' => $id
-            ]);
-            header('Location: listar.php?msg=Categoría actualizada correctamente.');
-            exit();
-        } catch (PDOException $e) {
-            if ($e->getCode() == 23000) {
-                $error = 'Ya existe otra categoría con ese nombre.';
-            } else {
-                $error = 'Error al actualizar la categoría.';
-            }
-        }
-    }
-}
-
-// Obtener datos actuales
-try {
-    $stmt = $conexion->prepare("SELECT * FROM categorias WHERE id_categoria = :id LIMIT 1");
-    $stmt->execute(['id' => $id]);
-    $categoria = $stmt->fetch();
-
-    if (!$categoria) {
-        header('Location: listar.php');
-        exit();
-    }
-} catch (Exception $e) {
-    header('Location: listar.php');
-    exit();
+require_once '../../includes/gestion_clasificaciones.php';
+$error='';
+$id=intval($_GET['id'] ?? 0);
+$categoria=['nombre'=>'','descripcion'=>'','estado'=>'1'];
+$stmt=$conexion->prepare('SELECT * FROM categorias WHERE id_categoria=?');$stmt->execute([$id]);$categoria=$stmt->fetch();
+if(!$categoria) { header('Location: listar.php');exit; }
+if($_SERVER['REQUEST_METHOD']==='POST') {
+    $entrada=[];foreach(['nombre','descripcion','estado'] as $campo) $entrada[$campo]=is_string($_POST[$campo] ?? null)?$_POST[$campo]:($campo==='estado'?'1':'');
+    $categoria=array_merge($categoria,$entrada);
+    try { guardar_clasificacion($conexion,'categorias',$entrada,$id); header('Location: listar.php?msg='.rawurlencode('Registro guardado correctamente.'));exit; }
+    catch(Throwable $e) { error_log($e->getMessage());$error=$e instanceof PDOException?($e->getCode()==23000?'Ese nombre ya existe. Utiliza otro.':'No se pudo guardar. Inténtalo nuevamente.'):$e->getMessage(); }
 }
 ?>
 <!DOCTYPE html>
@@ -72,22 +32,13 @@ try {
         .btn-back { background-color: #95a5a6; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; margin-left: 10px; }
         .alert-error { background: #fde8e8; color: #c0392b; padding: 10px 15px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
     </style>
+<link rel="stylesheet" href="../../css/admin-mejoras.css?v=20261013-menu">
+<link rel="stylesheet" href="../../css/experiencia.css?v=20261014"><script src="../../js/experiencia.js?v=20261014" defer></script>
+<link rel="stylesheet" href="../../css/admin-experiencia.css?v=1"><script src="../../js/admin-experiencia.js?v=1" defer></script>
 </head>
 <body>
 
-    <aside class="admin-sidebar">
-        <div class="sidebar-brand">TechStore Admin</div>
-        <ul class="sidebar-menu">
-            <li><a href="../dashboard.php">📊 Dashboard</a></li>
-            <li><a href="../productos/listar.php">📦 Productos</a></li>
-            <li><a href="listar.php" class="active">🗂️ Categorías</a></li>
-            <li><a href="../marcas/listar.php">🏷️ Marcas</a></li>
-            <li><a href="../pedidos/listar.php">🛒 Pedidos</a></li>
-        </ul>
-        <div class="sidebar-footer">
-            <a href="../../logout.php" class="btn-logout">Cerrar Sesión</a>
-        </div>
-    </aside>
+    <?php render_admin_sidebar('categorias'); ?>
 
     <div class="admin-main">
         <header class="admin-header">
@@ -100,10 +51,10 @@ try {
                     <div class="alert-error"><?php echo htmlspecialchars($error); ?></div>
                 <?php endif; ?>
 
-                <form action="editar.php?id=<?php echo $id; ?>" method="POST">
+                <form action="editar.php?id=<?php echo $id; ?>" method="POST"><?php echo csrf_campo(); ?>
                     <div class="form-group">
                         <label for="nombre">Nombre de la Categoría *</label>
-                        <input type="text" id="nombre" name="nombre" value="<?php echo htmlspecialchars($categoria['nombre']); ?>" required>
+                        <input type="text" id="nombre" name="nombre" maxlength="100" value="<?php echo htmlspecialchars($categoria['nombre']); ?>" required>
                     </div>
 
                     <div class="form-group">

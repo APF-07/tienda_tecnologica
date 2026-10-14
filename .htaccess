@@ -1,0 +1,7 @@
+Options -Indexes
+<FilesMatch "(?i)\.(sql|py|json|md|toml|ini|log|env|joblib|lock|tmp)$">
+    Require all denied
+</FilesMatch>
+<FilesMatch "^(Dockerfile|\.git.*|\.env.*)$">
+    Require all denied
+</FilesMatch>

@@ -4,10 +4,10 @@
 // =====================================================
 
 /**
- * Formatea un número decimal como precio en dólares
+ * Formatea un número decimal como precio en soles
  */
 function formatearPrecio($precio) {
-    return '$ ' . number_format($precio, 2);
+    return 'S/ ' . number_format($precio, 2);
 }
 
 /**

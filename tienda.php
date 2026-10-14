@@ -1,51 +1,13 @@
 <?php
-session_start();
+session_start(['cookie_httponly' => true, 'cookie_samesite' => 'Lax', 'cookie_secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off', 'use_strict_mode' => true]);
 require_once 'config/conexion.php';
-
-// Capturar filtros de búsqueda o categoría/marca si se envían por GET
-$busqueda = isset($_GET['q']) ? trim($_GET['q']) : '';
-$cat_filtro = isset($_GET['categoria']) ? intval($_GET['categoria']) : 0;
-$marca_filtro = isset($_GET['marca']) ? intval($_GET['marca']) : 0;
 
 try {
     // Obtener categorías y marcas para los filtros laterales
-    $categorias = $conexion->query("SELECT * FROM categorias WHERE estado = 1 ORDER BY nombre ASC")->fetchAll();
-    $marcas = $conexion->query("SELECT * FROM marcas WHERE estado = 1 ORDER BY nombre ASC")->fetchAll();
-
-    // Construir consulta dinámica basada en los filtros activos
-    $sql = "SELECT p.*, c.nombre AS categoria, m.nombre AS marca 
-            FROM productos p 
-            INNER JOIN categorias c ON p.id_categoria = c.id_categoria 
-            INNER JOIN marcas m ON p.id_marca = m.id_marca 
-            WHERE p.estado = 1";
-    
-    $params = [];
-
-    if (!empty($busqueda)) {
-        $sql .= " AND (p.nombre LIKE :busqueda OR p.descripcion LIKE :busqueda OR p.codigo LIKE :busqueda)";
-        $params['busqueda'] = "%$busqueda%";
-    }
-
-    if ($cat_filtro > 0) {
-        $sql .= " AND p.id_categoria = :cat";
-        $params['cat'] = $cat_filtro;
-    }
-
-    if ($marca_filtro > 0) {
-        $sql .= " AND p.id_marca = :marca";
-        $params['marca'] = $marca_filtro;
-    }
-
-    $sql .= " ORDER BY p.id_producto DESC";
-
-    $stmt = $conexion->prepare($sql);
-    $stmt->execute($params);
-    $productos = $stmt->fetchAll();
-
+    $categorias =$conexion->query("SELECT * FROM categorias WHERE estado = 1 ORDER BY nombre ASC")->fetchAll();
+    $marcas =$conexion->query("SELECT * FROM marcas WHERE estado = 1 ORDER BY nombre ASC")->fetchAll();
 } catch (Exception $e) {
-    $productos = [];
-    $categorias = [];
-    $marcas = [];
+    $categorias = [];$marcas = [];
 }
 
 // Contar productos en el carrito para la insignia del header
@@ -58,102 +20,77 @@ $total_carrito = isset($_SESSION['carrito']) ? array_sum(array_column($_SESSION[
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tienda Virtual - TechStore</title>
     <link rel="stylesheet" href="css/tienda.css">
+<link rel="stylesheet" href="css/mejoras.css">
+<link rel="stylesheet" href="css/experiencia.css?v=20261014"><script src="js/experiencia.js?v=20261014" defer></script>
+<link rel="stylesheet" href="css/catalogo-nuevo.css?v=1"><script src="js/catalogo.js?v=1" defer></script>
 </head>
-<body>
+<body class="catalog-page">
 
     <!-- HEADER PÚBLICO -->
-    <header class="store-header">
-        <a href="tienda.php" class="store-logo">TechStore 🚀</a>
-        <nav class="store-nav">
-            <a href="tienda.php" class="active">Catálogo</a>
-            <a href="rastrear.php">Rastrear Pedido</a>
-            <a href="carrito.php">🛒 Carrito <span class="cart-badge"><?php echo $total_carrito; ?></span></a>
-            <a href="index.php">Admin Panel</a>
-        </nav>
-    </header>
+    <?php render_store_header('tienda.php'); ?>
 
+    <section class="catalog-intro">
+        <div><span class="eyebrow">TU ESPACIO PARA EXPLORAR TECNOLOGÍA</span><h1>Buenas ideas.<br><span>Mejores equipos.</span></h1><p>Para estudiar, crear o jugar. Encuentra la tecnología que va contigo.</p><a class="catalog-hero-link" href="#catalogo">Explorar productos <span aria-hidden="true">↗</span></a><div class="catalog-hero-tags"><span>Precios en soles</span><span>Asistente de compras con IA</span></div></div>
+        <img class="intro-illustration" src="uploads/ilustraciones/hero.svg" alt="Laptop y smartphone de TechStore">
+    </section>
     <!-- CONTENEDOR GENERAL -->
     <div class="store-container">
         
         <!-- SIDEBAR DE FILTROS -->
         <aside class="store-sidebar">
-            <div class="filter-group">
-                <h3>Categorías</h3>
-                <ul class="filter-list">
-                    <li><a href="tienda.php" class="<?php echo ($cat_filtro == 0) ? 'active' : ''; ?>">Todas las categorías</a></li>
-                    <?php foreach ($categorias as $cat): ?>
+            <div class="filters-heading"><h2>Encuentra lo tuyo</h2><span>Filtra tu búsqueda</span></div>
+            <details class="filter-group filter-disclosure" open>
+                <summary>Categorías</summary>
+                <ul class="filter-list" id="lista-categorias">
+                    <li><a href="#" data-cat="0" class="filtro-cat active">Todas las categorías</a></li>
+                    <?php foreach ($categorias as$cat): ?>
                         <li>
-                            <a href="tienda.php?categoria=<?php echo $cat['id_categoria']; ?>" class="<?php echo ($cat_filtro == $cat['id_categoria']) ? 'active' : ''; ?>">
+                            <a href="#" data-cat="<?php echo $cat['id_categoria']; ?>" class="filtro-cat">
                                 <?php echo htmlspecialchars($cat['nombre']); ?>
                             </a>
                         </li>
                     <?php endforeach; ?>
                 </ul>
-            </div>
+            </details>
 
-            <div class="filter-group">
-                <h3>Marcas</h3>
-                <ul class="filter-list">
-                    <li><a href="tienda.php" class="<?php echo ($marca_filtro == 0) ? 'active' : ''; ?>">Todas las marcas</a></li>
-                    <?php foreach ($marcas as $marca): ?>
+            <details class="filter-group filter-disclosure" open>
+                <summary>Marcas</summary>
+                <ul class="filter-list" id="lista-marcas">
+                    <li><a href="#" data-marca="0" class="filtro-marca active">Todas las marcas</a></li>
+                    <?php foreach ($marcas as$marca): ?>
                         <li>
-                            <a href="tienda.php?marca=<?php echo $marca['id_marca']; ?>" class="<?php echo ($marca_filtro == $marca['id_marca']) ? 'active' : ''; ?>">
+                            <a href="#" data-marca="<?php echo $marca['id_marca']; ?>" class="filtro-marca">
                                 <?php echo htmlspecialchars($marca['nombre']); ?>
                             </a>
                         </li>
                     <?php endforeach; ?>
                 </ul>
-            </div>
+            </details>
         </aside>
 
         <!-- CATÁLOGO PRINCIPAL -->
-        <main class="store-catalog">
+        <main class="store-catalog" id="catalogo">
             <div class="catalog-header">
-                <h2>Catálogo de Productos Tecnológicos</h2>
-                <form action="tienda.php" method="GET" class="search-box">
-                    <input type="text" name="q" placeholder="Buscar productos..." value="<?php echo htmlspecialchars($busqueda); ?>">
-                    <?php if ($cat_filtro > 0): ?><input type="hidden" name="categoria" value="<?php echo $cat_filtro; ?>"><?php endif; ?>
-                    <?php if ($marca_filtro > 0): ?><input type="hidden" name="marca" value="<?php echo $marca_filtro; ?>"><?php endif; ?>
-                    <button type="submit">Buscar</button>
-                </form>
+                <div><span class="catalog-kicker">ELIGE TU PRÓXIMO EQUIPO</span><h2>Explora el catálogo</h2></div>
+                <div class="search-box">
+                    <label class="sr-only" for="input-busqueda">Buscar productos</label><input type="search" id="input-busqueda" placeholder="Busca tu próximo equipo…">
+                </div>
             </div>
+            <div class="catalog-controls"><div class="catalog-order"><label for="orden-catalogo">Ordenar por</label><select id="orden-catalogo"><option value="recientes">Más recientes</option><option value="precio_asc">Menor precio</option><option value="precio_desc">Mayor precio</option><option value="nombre">Nombre A–Z</option></select></div><label class="catalog-availability"><input type="checkbox" id="solo-disponibles"> Solo disponibles</label><button type="button" id="limpiar-filtros">Limpiar filtros</button></div>
+            <div class="catalog-selection" id="seleccion-catalogo" aria-live="polite"></div>
+            <p class="catalog-result-count" id="resumen-catalogo" role="status">Preparando tu catálogo…</p>
 
-            <div class="products-grid">
-                <?php if (count($productos) > 0): ?>
-                    <?php foreach ($productos as $prod): ?>
-                        <div class="product-card">
-                            <?php if (!empty($prod['imagen']) && file_exists('uploads/productos/' . $prod['imagen'])): ?>
-                                <img src="uploads/productos/<?php echo $prod['imagen']; ?>" alt="Producto">
-                            <?php else: ?>
-                                <img src="uploads/productos/default.png" alt="Sin Imagen">
-                            <?php endif; ?>
-
-                            <div class="product-info">
-                                <span class="product-brand"><?php echo htmlspecialchars($prod['marca']); ?></span>
-                                <h3 class="product-name"><?php echo htmlspecialchars($prod['nombre']); ?></h3>
-                                <div class="product-price">$ <?php echo number_format($prod['precio'], 2); ?></div>
-                                
-                                <div class="product-actions">
-                                    <a href="producto.php?id=<?php echo $prod['id_producto']; ?>" class="btn-detail">Ver Detalle</a>
-                                    <form action="carrito.php" method="POST" style="flex: 1; display: flex;">
-                                        <input type="hidden" name="id_producto" value="<?php echo $prod['id_producto']; ?>">
-                                        <input type="hidden" name="accion" value="agregar">
-                                        <button type="submit" class="btn-cart">Agregar</button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <div class="no-products">
-                        <h3>No se encontraron productos disponibles.</h3>
-                        <p style="margin-top: 8px; font-size: 13px;">Intenta cambiar los filtros de búsqueda o categoría.</p>
-                    </div>
-                <?php endif; ?>
+            <!-- CONTENEDOR DE PRODUCTOS DINÁMICO -->
+            <div class="products-grid" id="contenedor-productos" aria-live="polite" aria-busy="true">
+                <!-- Se cargarán vía AJAX -->
             </div>
         </main>
 
     </div>
 
+    <!-- SCRIPT DE FILTRADO EN TIEMPO REAL (AJAX) -->
+
+
+<footer class="store-footer"><strong>TechStore</strong><span>Tecnología para estudiar, trabajar y jugar.</span><span>Pedidos sujetos a confirmación de pago.</span></footer>
 </body>
 </html>

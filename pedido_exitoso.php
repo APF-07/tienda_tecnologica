@@ -1,17 +1,17 @@
 <?php
-session_start();
+session_start(['cookie_httponly' => true, 'cookie_samesite' => 'Lax', 'cookie_secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off', 'use_strict_mode' => true]);
 require_once 'config/conexion.php';
 
 $id_pedido = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
-if ($id_pedido <= 0) {
+if ($id_pedido <= 0 || empty($_SESSION['pedidos_permitidos'][$id_pedido])) {
     header('Location: tienda.php');
     exit();
 }
 
 try {
     // Obtener información principal del pedido y del cliente asociado
-    $stmtPedido = $conexion->prepare("SELECT p.*, c.nombre AS cliente_nombre, c.apellido AS cliente_apellido, c.correo, c.telefono, c.direccion 
+    $stmtPedido = $conexion->prepare("SELECT p.*, COALESCE(p.cliente_nombre, c.nombre) AS cliente_nombre, COALESCE(p.cliente_apellido, c.apellido) AS cliente_apellido, COALESCE(p.cliente_correo, c.correo) AS correo, COALESCE(p.cliente_telefono, c.telefono) AS telefono, COALESCE(p.cliente_direccion, c.direccion) AS direccion
                                        FROM pedidos p 
                                        INNER JOIN clientes c ON p.id_cliente = c.id_cliente 
                                        WHERE p.id_pedido = :id LIMIT 1");
@@ -171,19 +171,13 @@ try {
             box-shadow: 0 6px 16px rgba(37, 211, 102, 0.4);
         }
     </style>
+<link rel="stylesheet" href="css/mejoras.css">
+<link rel="stylesheet" href="css/experiencia.css?v=20261014"><script src="js/experiencia.js?v=20261014" defer></script>
 </head>
 <body>
 
     <!-- HEADER PÚBLICO -->
-    <header class="store-header">
-        <a href="tienda.php" class="store-logo">TechStore 🚀</a>
-        <nav class="store-nav">
-            <a href="tienda.php">Catálogo</a>
-            <a href="rastrear.php">Rastrear Pedido</a>
-            <a href="carrito.php">🛒 Carrito</a>
-            <a href="admin/dashboard.php">Admin Panel</a>
-        </nav>
-    </header>
+    <?php render_store_header(''); ?>
 
     <div class="success-container">
         <div class="success-icon">✅</div>
@@ -209,8 +203,9 @@ try {
                 <div><strong>Correo:</strong> <?php echo htmlspecialchars($pedido['correo']); ?></div>
                 <div><strong>Teléfono:</strong> <?php echo htmlspecialchars($pedido['telefono']); ?></div>
                 <div><strong>Fecha:</strong> <?php echo $pedido['fecha_pedido']; ?></div>
-                <div style="grid-column: 1 / -1;"><strong>Datos de Envío:</strong> <?php echo htmlspecialchars($pedido['direccion']); ?></div>
+                <div><strong>Método de Pago:</strong> <span style="color: #38BDF8;"><?php echo htmlspecialchars($pedido['metodo_pago'] ?? 'No especificado'); ?></span></div>
                 <div><strong>Estado Actual:</strong> <span style="color: #FBBF24; font-weight: 600;"><?php echo $pedido['estado']; ?></span></div>
+                <div style="grid-column: 1 / -1;"><strong>Datos de Envío:</strong> <?php echo htmlspecialchars($pedido['direccion']); ?></div>
             </div>
         </div>
 
@@ -232,42 +227,36 @@ try {
                         <td><code style="color: #38BDF8;"><?php echo htmlspecialchars($det['codigo']); ?></code></td>
                         <td><strong><?php echo htmlspecialchars($det['producto_nombre']); ?></strong></td>
                         <td><?php echo $det['cantidad']; ?></td>
-                        <td>$ <?php echo number_format($det['precio_unitario'], 2); ?></td>
-                        <td><strong style="color: #34D399;">$ <?php echo number_format($det['subtotal'], 2); ?></strong></td>
+                        <td>S/ <?php echo number_format($det['precio_unitario'], 2); ?></td>
+                        <td><strong style="color: #34D399;">S/ <?php echo number_format($det['subtotal'], 2); ?></strong></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
 
         <div class="order-total-box">
-            Total Cancelado: $ <?php echo number_format($pedido['total'], 2); ?>
+            Total a Pagar: S/ <?php echo number_format($pedido['total'], 2); ?>
         </div>
 
-        <!-- BOTONES DE ACCIÓN (WHATSAPP AL CLIENTE + VOLVER) -->
+        <!-- CONFIGURACIÓN DE WHATSAPP DIRIGIDO AL ADMINISTRADOR -->
         <?php
-            // 1. Tomar y limpiar el teléfono que ingresó el cliente en el formulario
-            $telefono_cliente = preg_replace('/[^0-9]/', '', $pedido['telefono']);
+            // Tu número de WhatsApp como administrador (con código de país 51 para Perú)
+            $telefono_admin = "51971968701";
 
-            // Si el número tiene 9 dígitos (formato local de Perú), le agregamos el código de país '51' automáticamente
-            if (strlen($telefono_cliente) == 9) {
-                $telefono_cliente = "51" . $telefono_cliente;
-            }
+            // Mensaje que el cliente te enviará con los datos de su orden
+            $texto_mensaje = "¡Hola! Acabo de realizar el pedido #" . $pedido['id_pedido'] . " en TechStore.\n" .
+                             "Cliente: " . $pedido['cliente_nombre'] . " " . $pedido['cliente_apellido'] . "\n" .
+                             "Método de Pago: " . ($pedido['metodo_pago'] ?? 'No especificado') . "\n" .
+                             "Total: S/ " . number_format($pedido['total'], 2) . "\n\n" .
+                             "Adjunto la captura de mi pago para validar mi pedido.";
 
-            // 2. Redactar el mensaje en texto plano ordenado (sin asteriscos para evitar símbolos raros en WhatsApp)
-            $texto_mensaje = "¡Hola, " . $pedido['cliente_nombre'] . "! Gracias por tu compra en TechStore.\n\n" .
-                             "Aquí tienes el resumen de tu pedido:\n" .
-                             "Orden: #" . $pedido['id_pedido'] . "\n" .
-                             "Total: $" . number_format($pedido['total'], 2) . "\n" .
-                             "Direccion: " . $pedido['direccion'] . "\n\n" .
-                             "Guarda este número de orden para realizar tu rastreo en nuestra web. ¡Pronto nos comunicaremos contigo!";
-
-            // 3. Generar el enlace oficial de WhatsApp con codificación segura
-            $link_whatsapp = "https://wa.me/{$telefono_cliente}?text=" . rawurlencode($texto_mensaje);
+            // Enlace oficial de WhatsApp hacia tu número
+            $link_whatsapp = "https://wa.me/{$telefono_admin}?text=" . rawurlencode($texto_mensaje);
         ?>
 
         <div class="actions-container">
             <a href="<?php echo $link_whatsapp; ?>" target="_blank" class="btn-whatsapp">
-                💬 Guardar Comprobante en mi WhatsApp
+                💬 Enviar Comprobante por WhatsApp
             </a>
             <a href="tienda.php" class="btn-return">Volver a la Tienda</a>
         </div>

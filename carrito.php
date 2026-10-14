@@ -1,112 +1,36 @@
 <?php
-session_start();
 require_once 'config/conexion.php';
-
-// Inicializar el carrito si no existe
-if (!isset($_SESSION['carrito'])) {
-    $_SESSION['carrito'] = [];
+require_once 'includes/carrito.php';
+$_SESSION['carrito'] = $_SESSION['carrito'] ?? [];
+$avisos = sincronizar_carrito($conexion,$_SESSION['carrito']);
+$mensaje = $_SESSION['mensaje_carrito'] ?? '';
+unset($_SESSION['mensaje_carrito']);
+if ($avisos) $mensaje = implode(' ', $avisos);
+if ($_SERVER['REQUEST_METHOD']==='POST') {
+    $accion = $_POST['accion_boton'] ?? $_POST['accion'] ?? '';
+    try {
+        if (!is_string($accion)) throw new RuntimeException('Acción no válida.');
+        if ($accion==='agregar') {
+            agregar_carrito($conexion,$_SESSION['carrito'],intval($_POST['id_producto'] ?? 0),intval($_POST['cantidad'] ?? 1));
+            $mensaje='Producto agregado al carrito.';
+        } elseif ($accion==='actualizar') {
+            actualizar_carrito($_SESSION['carrito'],is_array($_POST['cantidades'] ?? null)?$_POST['cantidades']:[]);
+            $mensaje='Carrito actualizado.';
+        } elseif (str_starts_with($accion,'eliminar:')) {
+            unset($_SESSION['carrito'][intval(substr($accion,9))]);
+            $mensaje='Producto retirado del carrito.';
+        } elseif ($accion==='vaciar') {
+            $_SESSION['carrito']=[]; $mensaje='Carrito vaciado.';
+        } else throw new RuntimeException('Acción no válida.');
+    } catch (Throwable $e) {
+        error_log($e->getMessage());
+        $mensaje=$e instanceof PDOException?'No se pudo actualizar el carrito. Inténtalo nuevamente.':$e->getMessage();
+    }
+    $_SESSION['mensaje_carrito']=$mensaje;
+    header('Location: carrito.php'); exit;
 }
-
-// Capturar acciones enviadas por POST o GET
-$accion = isset($_POST['accion']) ? $_POST['accion'] : (isset($_GET['accion']) ? $_GET['accion'] : '');
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' || !empty($accion)) {
-
-    // 1. ACCIÓN: AGREGAR AL CARRITO
-    if ($accion === 'agregar') {
-        $id_producto = isset($_POST['id_producto']) ? intval($_POST['id_producto']) : 0;
-        $cantidad_solicitada = isset($_POST['cantidad']) ? intval($_POST['cantidad']) : 1;
-
-        if ($id_producto > 0 && $cantidad_solicitada > 0) {
-            try {
-                // Verificar datos y stock real en la base de datos
-                $stmt = $conexion->prepare("SELECT * FROM productos WHERE id_producto = :id AND estado = 1 LIMIT 1");
-                $stmt->execute(['id' => $id_producto]);
-                $producto = $stmt->fetch();
-
-                if ($producto) {
-                    $stock_disponible = $producto['stock'];
-
-                    // Calcular cantidad actual en el carrito para este producto
-                    $cantidad_en_carrito = isset($_SESSION['carrito'][$id_producto]) ? $_SESSION['carrito'][$id_producto]['cantidad'] : 0;
-                    $nueva_cantidad = $cantidad_en_carrito + $cantidad_solicitada;
-
-                    // Validar que no supere el stock disponible
-                    if ($nueva_cantidad <= $stock_disponible) {
-                        if (isset($_SESSION['carrito'][$id_producto])) {
-                            $_SESSION['carrito'][$id_producto]['cantidad'] = $nueva_cantidad;
-                        } else {
-                            $_SESSION['carrito'][$id_producto] = [
-                                'id_producto' => $producto['id_producto'],
-                                'nombre' => $producto['nombre'],
-                                'precio' => $producto['precio'],
-                                'imagen' => $producto['imagen'],
-                                'cantidad' => $cantidad_solicitada,
-                                'stock' => $stock_disponible
-                            ];
-                        }
-                    }
-                }
-            } catch (Exception $e) {
-                // Error silencioso de base de datos en carrito
-            }
-        }
-        header('Location: carrito.php');
-        exit();
-    }
-
-    // 2. ACCIÓN: ACTUALIZAR CANTIDADES
-    if ($accion === 'actualizar') {
-        if (isset($_POST['cantidades']) && is_array($_POST['cantidades'])) {
-            foreach ($_POST['cantidades'] as $id_producto => $cantidad) {
-                $id_producto = intval($id_producto);
-                $cantidad = intval($cantidad);
-
-                if (isset($_SESSION['carrito'][$id_producto])) {
-                    if ($cantidad <= 0) {
-                        unset($_SESSION['carrito'][$id_producto]);
-                    } else {
-                        // Validar contra stock máximo almacenado
-                        $stock_max = $_SESSION['carrito'][$id_producto]['stock'];
-                        if ($cantidad <= $stock_max) {
-                            $_SESSION['carrito'][$id_producto]['cantidad'] = $cantidad;
-                        } else {
-                            $_SESSION['carrito'][$id_producto]['cantidad'] = $stock_max; // Limitar al stock máximo
-                        }
-                    }
-                }
-            }
-        }
-        header('Location: carrito.php');
-        exit();
-    }
-
-    // 3. ACCIÓN: ELIMINAR UN PRODUCTO
-    if ($accion === 'eliminar') {
-        $id_producto = isset($_GET['id']) ? intval($_GET['id']) : 0;
-        if ($id_producto > 0 && isset($_SESSION['carrito'][$id_producto])) {
-            unset($_SESSION['carrito'][$id_producto]);
-        }
-        header('Location: carrito.php');
-        exit();
-    }
-
-    // 4. ACCIÓN: VACIAR CARRITO
-    if ($accion === 'vaciar') {
-        unset($_SESSION['carrito']);
-        header('Location: carrito.php');
-        exit();
-    }
-}
-
-// Calcular total general de productos en el carrito
-$total_carrito_items = isset($_SESSION['carrito']) ? array_sum(array_column($_SESSION['carrito'], 'cantidad')) : 0;
-$total_precio = 0;
-if (isset($_SESSION['carrito'])) {
-    foreach ($_SESSION['carrito'] as $item) {
-        $total_precio += ($item['precio'] * $item['cantidad']);
-    }
-}
+$total_carrito_items = array_sum(array_column($_SESSION['carrito'],'cantidad'));
+$total_precio = array_sum(array_map(fn($item) => precio_centimos($item['precio'])*$item['cantidad'],$_SESSION['carrito']))/100;
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -225,24 +149,20 @@ if (isset($_SESSION['carrito'])) {
             .cart-summary { flex-direction: column; gap: 15px; text-align: center; }
         }
     </style>
+<link rel="stylesheet" href="css/mejoras.css">
+<link rel="stylesheet" href="css/experiencia.css?v=20261014"><script src="js/experiencia.js?v=20261014" defer></script>
 </head>
 <body>
 
     <!-- HEADER PÚBLICO -->
-    <header class="store-header">
-        <a href="tienda.php" class="store-logo">TechStore 🚀</a>
-        <nav class="store-nav">
-            <a href="tienda.php">Catálogo</a>
-            <a href="carrito.php" class="active">🛒 Carrito <span class="cart-badge"><?php echo $total_carrito_items; ?></span></a>
-            <a href="index.php">Admin Panel</a>
-        </nav>
-    </header>
+    <?php render_store_header('carrito.php'); ?>
 
     <div class="cart-container">
-        <h1 class="cart-title">Tu Carrito de Compras</h1>
+        <h1 class="cart-title">Tu carrito de compras</h1><?php if ($mensaje): ?><div class="cart-notice" role="status"><?php echo e($mensaje); ?></div><?php endif; ?>
 
         <?php if (!empty($_SESSION['carrito'])): ?>
             <form action="carrito.php" method="POST">
+                <?php echo csrf_campo(); ?>
                 <input type="hidden" name="accion" value="actualizar">
                 
                 <table class="cart-table">
@@ -262,20 +182,16 @@ if (isset($_SESSION['carrito'])) {
                         ?>
                             <tr>
                                 <td>
-                                    <?php if (!empty($item['imagen']) && file_exists('uploads/productos/' . $item['imagen'])): ?>
-                                        <img src="uploads/productos/<?php echo $item['imagen']; ?>" class="cart-img" alt="Prod">
-                                    <?php else: ?>
-                                        <img src="uploads/productos/default.png" class="cart-img" alt="S/I">
-                                    <?php endif; ?>
+                                    <img src="<?php echo e(imagen_producto($item)); ?>" class="cart-img" alt="<?php echo e($item['nombre']); ?>">
                                 </td>
                                 <td><strong><?php echo htmlspecialchars($item['nombre']); ?></strong></td>
-                                <td>$ <?php echo number_format($item['precio'], 2); ?></td>
+                                <td>S/ <?php echo number_format($item['precio'], 2); ?></td>
                                 <td>
                                     <input type="number" name="cantidades[<?php echo $item['id_producto']; ?>]" value="<?php echo $item['cantidad']; ?>" min="1" max="<?php echo $item['stock']; ?>" class="cart-input">
                                 </td>
-                                <td><strong>$ <?php echo number_format($subtotal, 2); ?></strong></td>
+                                <td><strong>S/ <?php echo number_format($subtotal, 2); ?></strong></td>
                                 <td>
-                                    <a href="carrito.php?accion=eliminar&id=<?php echo $item['id_producto']; ?>" class="btn-delete-item">Eliminar</a>
+                                    <button type="submit" name="accion_boton" value="eliminar:<?php echo $item['id_producto']; ?>" class="btn-remove" formnovalidate>Eliminar</button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -285,10 +201,10 @@ if (isset($_SESSION['carrito'])) {
                 <div class="cart-summary">
                     <div class="cart-actions">
                         <button type="submit" class="btn-update">Actualizar Carrito</button>
-                        <a href="carrito.php?accion=vaciar" class="btn-empty" onclick="return confirm('¿Vaciar todo el carrito?');">Vaciar Carrito</a>
+                        <button type="submit" name="accion_boton" value="vaciar" class="btn-empty" formnovalidate>Vaciar carrito</button>
                     </div>
                     <div class="cart-total-text">
-                        Total: $ <?php echo number_format($total_precio, 2); ?>
+                        Total: S/ <?php echo number_format($total_precio, 2); ?>
                     </div>
                 </div>
             </form>

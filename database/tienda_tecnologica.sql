@@ -1,8 +1,8 @@
 -- =====================================================
 -- CREACIÓN DE LA BASE DE DATOS
 -- =====================================================
-DROP DATABASE IF EXISTS tienda_tecnologica;
-CREATE DATABASE tienda_tecnologica CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+-- Instalación nueva: no elimina una base existente.
+CREATE DATABASE IF NOT EXISTS tienda_tecnologica CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE tienda_tecnologica;
 
 -- =====================================================
@@ -82,6 +82,13 @@ CREATE TABLE pedidos (
     id_cliente INT NOT NULL,
     fecha_pedido TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     total DECIMAL(10,2) NOT NULL,
+    metodo_pago VARCHAR(50) NOT NULL DEFAULT 'Contraentrega',
+    codigo_operacion VARCHAR(100) NULL,
+    cliente_nombre VARCHAR(100) NULL,
+    cliente_apellido VARCHAR(100) NULL,
+    cliente_correo VARCHAR(100) NULL,
+    cliente_telefono VARCHAR(20) NULL,
+    cliente_direccion TEXT NULL,
     estado ENUM('Pendiente', 'Confirmado', 'En preparación', 'Enviado', 'Entregado', 'Cancelado') NOT NULL DEFAULT 'Pendiente',
     CONSTRAINT fk_pedido_cliente FOREIGN KEY (id_cliente) 
         REFERENCES clientes(id_cliente) ON DELETE RESTRICT ON UPDATE CASCADE
@@ -109,7 +116,7 @@ CREATE TABLE detalle_pedidos (
 -- =====================================================
 
 -- 1. Insertar Administrador por defecto
--- Correo: admin@tienda.com | Contraseña: admin123
+-- Correo: admin@tienda.com | Contraseña inicial: password. Cambiar antes de publicar.
 INSERT INTO usuarios (nombre, correo, password, rol, estado) VALUES 
 ('Administrador Principal', 'admin@tienda.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'administrador', 1);
 

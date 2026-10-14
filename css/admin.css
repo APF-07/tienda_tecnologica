@@ -443,3 +443,19 @@ select:focus, input:focus, textarea:focus {
     background-color: #0B1020 !important;
     color: #F8FAFC !important;
 }
+/* Layout adaptable y acciones de formulario */
+.inline-action { display:inline-flex; margin:0; }
+.admin-content { overflow-x:auto; }
+.admin-content table { min-width:620px; }
+@media(max-width:800px) {
+ body { display:block; }
+ .admin-sidebar { position:static; width:100%; height:auto; }
+ .sidebar-brand { padding:18px 22px; }
+ .sidebar-menu { display:flex; flex-wrap:wrap; padding:10px; gap:4px; }
+ .sidebar-menu li { margin:0; }
+ .sidebar-menu a { padding:9px 12px; }
+ .sidebar-footer { padding:12px; }
+ .admin-main { margin-left:0; width:100%; }
+ .admin-header { flex-wrap:wrap; gap:12px; padding:20px; }
+ .admin-content { padding:20px; }
+}

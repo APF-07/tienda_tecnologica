@@ -1,25 +1,26 @@
 <?php
-session_start();
+session_start(['cookie_httponly' => true, 'cookie_samesite' => 'Lax', 'cookie_secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off', 'use_strict_mode' => true]);
 require_once 'config/conexion.php';
 
 $pedido = null;
 $detalles = [];
 $error = '';
 
-if (isset($_GET['id_pedido'])) {
-    $id_pedido = intval($_GET['id_pedido']);
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $id_pedido = intval($_POST['id_pedido'] ?? 0);
     
     if ($id_pedido > 0) {
         try {
             // Buscar la información principal del pedido y del cliente
-            $stmtPedido = $conexion->prepare("SELECT p.*, c.nombre AS cliente_nombre, c.apellido AS cliente_apellido, c.correo, c.telefono, c.direccion 
+            $stmtPedido = $conexion->prepare("SELECT p.*, COALESCE(p.cliente_nombre, c.nombre) AS cliente_nombre, COALESCE(p.cliente_apellido, c.apellido) AS cliente_apellido, COALESCE(p.cliente_correo, c.correo) AS correo, COALESCE(p.cliente_telefono, c.telefono) AS telefono, COALESCE(p.cliente_direccion, c.direccion) AS direccion
                                                FROM pedidos p 
                                                INNER JOIN clientes c ON p.id_cliente = c.id_cliente 
-                                               WHERE p.id_pedido = :id LIMIT 1");
-            $stmtPedido->execute(['id' => $id_pedido]);
+                                               WHERE p.id_pedido = :id AND COALESCE(p.cliente_correo, c.correo) = :correo LIMIT 1");
+            $stmtPedido->execute(['id' => $id_pedido, 'correo' => trim($_POST['correo'] ?? '')]);
             $pedido = $stmtPedido->fetch(PDO::FETCH_ASSOC);
 
             if ($pedido) {
+                $_SESSION['pedidos_permitidos'][$id_pedido] = true;
                 // Obtener los productos asociados a este pedido
                 $stmtDetalles = $conexion->prepare("SELECT dp.*, pr.nombre AS producto_nombre, pr.codigo 
                                                   FROM detalle_pedidos dp 
@@ -28,7 +29,7 @@ if (isset($_GET['id_pedido'])) {
                 $stmtDetalles->execute(['id' => $id_pedido]);
                 $detalles = $stmtDetalles->fetchAll(PDO::FETCH_ASSOC);
             } else {
-                $error = "No se encontró ningún pedido con el ID #{$id_pedido}. Verifica el número e intenta nuevamente.";
+                $error = "No encontramos un pedido con esos datos. Verifica el número y el correo de compra.";
             }
         } catch (Exception $e) {
             $error = "Ocurrió un error al consultar el pedido. Inténtalo más tarde.";
@@ -157,29 +158,23 @@ if (isset($_GET['id_pedido'])) {
             font-size: 12px;
         }
     </style>
+<link rel="stylesheet" href="css/mejoras.css">
+<link rel="stylesheet" href="css/experiencia.css?v=20261014"><script src="js/experiencia.js?v=20261014" defer></script>
 </head>
 <body>
 
     <!-- NAVBAR PÚBLICO -->
-    <header class="store-header">
-        <a href="tienda.php" class="store-logo">TechStore 🚀</a>
-        <nav class="store-nav">
-            <a href="tienda.php">Catálogo</a>
-            <a href="rastrear.php" class="active">Rastrear Pedido</a>
-            <a href="carrito.php">🛒 Carrito</a>
-            <a href="admin/dashboard.php">Admin Panel</a>
-        </nav>
-    </header>
+    <?php render_store_header('rastrear.php'); ?>
 
     <div class="tracker-container">
         <div class="tracker-card">
             <h1 class="tracker-title">Rastreo de Pedidos</h1>
-            <p class="tracker-subtitle">Ingresa el número de tu orden para consultar su estado actual en tiempo real.</p>
+            <p class="tracker-subtitle">Ingresa el número de pedido y el correo que usaste al comprar para consultar su estado.</p>
 
-            <form action="rastrear.php" method="GET" class="search-form">
-                <input type="number" name="id_pedido" placeholder="Ej. 1, 2, 3..." value="<?php echo isset($_GET['id_pedido']) ? htmlspecialchars($_GET['id_pedido']) : ''; ?>" required>
+            <form action="rastrear.php" method="POST" class="search-form"><?php echo csrf_campo(); ?>
+                <input type="number" name="id_pedido" placeholder="Ej. 1, 2, 3..." value="<?php echo isset($_POST['id_pedido']) ? htmlspecialchars($_POST['id_pedido']) : ''; ?>" required>
                 <button type="submit">Buscar Pedido</button>
-            </form>
+            <label for="correo-rastreo" class="sr-only">Correo de la compra</label><input id="correo-rastreo" type="email" name="correo" required placeholder="Correo usado en la compra" autocomplete="email"></form>
 
             <?php if (!empty($error)): ?>
                 <div class="error-message"><?php echo $error; ?></div>
@@ -213,14 +208,14 @@ if (isset($_GET['id_pedido'])) {
                                 <td><code style="color: #38BDF8;"><?php echo htmlspecialchars($det['codigo']); ?></code></td>
                                 <td><strong><?php echo htmlspecialchars($det['producto_nombre']); ?></strong></td>
                                 <td><?php echo $det['cantidad']; ?></td>
-                                <td><strong style="color: #34D399;">$ <?php echo number_format($det['subtotal'], 2); ?></strong></td>
+                                <td><strong style="color: #34D399;">S/ <?php echo number_format($det['subtotal'], 2); ?></strong></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
 
                 <div style="text-align: right; font-size: 17px; font-weight: 700; color: #34D399; margin-top: 15px;">
-                    Total Cancelado: $ <?php echo number_format($pedido['total'], 2); ?>
+                    Total Cancelado: S/ <?php echo number_format($pedido['total'], 2); ?>
                 </div>
             <?php endif; ?>
         </div>

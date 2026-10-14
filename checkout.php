@@ -1,118 +1,27 @@
 <?php
-session_start();
-require_once 'config/conexion.php';
-
-// Si el carrito está vacío, redirigir al carrito
-if (!isset($_SESSION['carrito']) || empty($_SESSION['carrito'])) {
-    header('Location: carrito.php');
-    exit();
-}
-
+require_once __DIR__ . '/includes/seguridad.php';
+require_once __DIR__ . '/config/conexion.php';
+require_once __DIR__ . '/includes/compras.php';
+require_once __DIR__ . '/config/maps.php';
+$clave_maps=clave_google_maps();
+if (empty($_SESSION['carrito'])) { header('Location: carrito.php'); exit; }
 $error = '';
-
-// Procesar el formulario de compra cuando se envía por POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nombre = trim($_POST['nombre']);
-    $apellido = trim($_POST['apellido']);
-    $correo = trim($_POST['correo']);
-    $telefono = trim($_POST['telefono']);
-    $dni = trim($_POST['dni']);
-    $direccion = trim($_POST['direccion']);
-    $tipo_envio = trim($_POST['tipo_envio']);
-
-    if (empty($nombre) || empty($apellido) || empty($correo) || empty($telefono) || empty($direccion)) {
-        $error = 'Por favor, completa todos los campos obligatorios para procesar tu pedido.';
-    } else {
-        try {
-            // Iniciar transacción segura en la base de datos
-            $conexion->beginTransaction();
-
-            // 1. Calcular total general y verificar stock una última vez
-            $total_pedido = 0;
-            foreach ($_SESSION['carrito'] as $item) {
-                // Verificar stock actual en BD
-                $stmtCheck = $conexion->prepare("SELECT stock FROM productos WHERE id_producto = :id FOR UPDATE");
-                $stmtCheck->execute(['id' => $item['id_producto']]);
-                $prodData = $stmtCheck->fetch();
-
-                if (!$prodData || $prodData['stock'] < $item['cantidad']) {
-                    throw new Exception("Lo sentimos, el producto '{$item['nombre']}' ya no cuenta con stock suficiente.");
-                }
-                $total_pedido += ($item['precio'] * $item['cantidad']);
-            }
-
-            // Añadir costo de envío si aplica (ej. $15 para fuera de la ciudad)
-            $costo_envio = ($tipo_envio === 'fuera') ? 15.00 : 0.00;
-            $total_general = $total_pedido + $costo_envio;
-
-            // 2. Registrar o buscar al cliente
-            $direccion_completa = "DNI: $dni | Envío: " . ($tipo_envio === 'fuera' ? 'Fuera de la ciudad (+$15)' : 'Dentro de la ciudad (Gratis)') . " | Dir: $direccion";
-
-            $stmtCliente = $conexion->prepare("INSERT INTO clientes (nombre, apellido, correo, telefono, direccion) VALUES (:nombre, :apellido, :correo, :telefono, :direccion)");
-            $stmtCliente->execute([
-                'nombre' => $nombre,
-                'apellido' => $apellido,
-                'correo' => $correo,
-                'telefono' => $telefono,
-                'direccion' => $direccion_completa
-            ]);
-            $id_cliente = $conexion->lastInsertId();
-
-            // 3. Registrar el pedido principal
-            $stmtPedido = $conexion->prepare("INSERT INTO pedidos (id_cliente, total, estado) VALUES (:id_cliente, :total, 'Pendiente')");
-            $stmtPedido->execute([
-                'id_cliente' => $id_cliente,
-                'total' => $total_general
-            ]);
-            $id_pedido = $conexion->lastInsertId();
-
-            // 4. Registrar detalles del pedido y descontar stock
-            $stmtDetalle = $conexion->prepare("INSERT INTO detalle_pedidos (id_pedido, id_producto, cantidad, precio_unitario, subtotal) VALUES (:id_pedido, :id_producto, :cantidad, :precio_unitario, :subtotal)");
-            
-            $stmtStock = $conexion->prepare("UPDATE productos SET stock = stock - :cantidad WHERE id_producto = :id_producto");
-
-            foreach ($_SESSION['carrito'] as $item) {
-                $subtotal_item = $item['precio'] * $item['cantidad'];
-
-                // Insertar detalle
-                $stmtDetalle->execute([
-                    'id_pedido' => $id_pedido,
-                    'id_producto' => $item['id_producto'],
-                    'cantidad' => $item['cantidad'],
-                    'precio_unitario' => $item['precio'],
-                    'subtotal' => $subtotal_item
-                ]);
-
-                // Descontar stock
-                $stmtStock->execute([
-                    'cantidad' => $item['cantidad'],
-                    'id_producto' => $item['id_producto']
-                ]);
-            }
-
-            // Confirmar transacción permanentemente
-            $conexion->commit();
-
-            // Vaciar carrito
+    $datos = datos_compra($_POST);
+    extract($datos, EXTR_SKIP);
+    try {
+            $id_pedido = registrar_compra($conexion, $_SESSION['carrito'], $datos);
+            $_SESSION['pedidos_permitidos'][$id_pedido] = true;
             unset($_SESSION['carrito']);
-
-            // Redirigir a la página de pedido exitoso pasando el ID
-            header('Location: pedido_exitoso.php?id=' . $id_pedido);
-            exit();
-
-        } catch (Exception $e) {
-            // Si ocurre algún error, revertir toda la transacción
-            $conexion->rollBack();
-            $error = $e->getMessage();
+            header('Location: pedido_exitoso.php?id=' . $id_pedido); exit;
+        } catch (Throwable $e) {
+            unset($item);
+            if ($conexion->inTransaction()) $conexion->rollBack();
+            error_log($e->getMessage());
+            $error = $e instanceof RuntimeException && !($e instanceof PDOException) ? $e->getMessage() : 'No pudimos registrar tu pedido. Inténtalo nuevamente.';
         }
-    }
 }
-
-// Calcular subtotales para mostrar en la vista de checkout
-$total_productos = 0;
-foreach ($_SESSION['carrito'] as $item) {
-    $total_productos += ($item['precio'] * $item['cantidad']);
-}
+$total_productos = array_sum(array_map(fn($item) => $item['precio'] * $item['cantidad'], $_SESSION['carrito']));
 $total_carrito_items = array_sum(array_column($_SESSION['carrito'], 'cantidad'));
 ?>
 <!DOCTYPE html>
@@ -122,13 +31,9 @@ $total_carrito_items = array_sum(array_column($_SESSION['carrito'], 'cantidad'))
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finalizar Compra - TechStore</title>
     
-    <!-- FAVICON (Logotipo en la pestaña del navegador) -->
-    <link rel="icon" type="image/png" href="img/logo.png">
-
+    <link rel="icon" href="uploads/productos/default.svg" type="image/svg+xml">
     <link rel="stylesheet" href="css/tienda.css">
     
-    <!-- 🔑 PEGADURA DE LA API DE GOOGLE MAPS: Reemplaza AQUÍ tu Clave de API -->
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC9cQ4lhI7uyIEqav5yF2jG53WBwluVVcc&libraries=places"></script>
 
     <style>
         .checkout-container {
@@ -218,27 +123,45 @@ $total_carrito_items = array_sum(array_column($_SESSION['carrito'], 'cantidad'))
             margin-bottom: 20px;
             font-size: 14px;
         }
+
+        /* Estilos para los métodos de pago */
+        .metodos-pago-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .metodo-opcion {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .metodo-opcion:hover {
+            border-color: #1e3c72;
+            background-color: #f8fafc;
+        }
+        .metodo-opcion input {
+            width: auto;
+            margin-right: 10px;
+        }
+
         @media(max-width: 768px) {
             .checkout-container { flex-direction: column; margin: 20px; }
         }
     </style>
+<link rel="stylesheet" href="css/mejoras.css">
+<link rel="stylesheet" href="css/experiencia.css?v=20261014"><script src="js/experiencia.js?v=20261014" defer></script>
 </head>
 <body>
 
-    <!-- HEADER PÚBLICO -->
-    <header class="store-header">
-        <a href="tienda.php" class="store-logo">TechStore 🚀</a>
-        <nav class="store-nav">
-            <a href="tienda.php">Catálogo</a>
-            <a href="rastrear.php">Rastrear Pedido</a>
-            <a href="carrito.php">🛒 Carrito <span class="cart-badge"><?php echo $total_carrito_items; ?></span></a>
-            <a href="index.php">Admin Panel</a>
-        </nav>
-    </header>
+    <?php render_store_header(''); ?>
 
     <div class="checkout-container">
         
-        <!-- FORMULARIO DE DATOS DEL CLIENTE -->
         <div class="checkout-form-box">
             <h2 class="checkout-title">Datos de Envío y Contacto</h2>
 
@@ -247,53 +170,97 @@ $total_carrito_items = array_sum(array_column($_SESSION['carrito'], 'cantidad'))
             <?php endif; ?>
 
             <form action="checkout.php" method="POST">
+                <?php echo csrf_campo(); ?>
                 <div class="form-row">
                     <div class="form-group" style="flex: 1;">
                         <label for="nombre">Nombre *</label>
-                        <input type="text" id="nombre" name="nombre" required placeholder="Tu nombre">
+                        <input type="text" id="nombre" name="nombre" required placeholder="Tu nombre" value="<?php echo htmlspecialchars($nombre ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                     </div>
                     <div class="form-group" style="flex: 1;">
                         <label for="apellido">Apellido *</label>
-                        <input type="text" id="apellido" name="apellido" required placeholder="Tu apellido">
+                        <input type="text" id="apellido" name="apellido" required placeholder="Tu apellido" value="<?php echo htmlspecialchars($apellido ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group" style="flex: 1;">
                         <label for="correo">Correo Electrónico *</label>
-                        <input type="email" id="correo" name="correo" required placeholder="correo@ejemplo.com">
+                        <input type="email" id="correo" name="correo" required placeholder="correo@ejemplo.com" value="<?php echo htmlspecialchars($correo ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                     </div>
                     <div class="form-group" style="flex: 1;">
                         <label for="telefono">Teléfono / Celular *</label>
-                        <input type="text" id="telefono" name="telefono" required placeholder="999888777">
+                        <input type="text" id="telefono" name="telefono" required placeholder="999888777" value="<?php echo htmlspecialchars($telefono ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group" style="flex: 1;">
                         <label for="dni">DNI / Documento *</label>
-                        <input type="text" id="dni" name="dni" required placeholder="Número de documento">
+                        <input type="text" id="dni" name="dni" required placeholder="Número de documento" value="<?php echo htmlspecialchars($dni ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                     </div>
                     <div class="form-group" style="flex: 1;">
                         <label for="tipo_envio">Tipo de Envío *</label>
-                        <select id="tipo_envio" name="tipo_envio">
+                        <select id="tipo_envio" name="tipo_envio" onchange="calcularTotalGeneral()">
                             <option value="dentro">Dentro de la ciudad (Gratis)</option>
-                            <option value="fuera">Fuera de la ciudad (+$15.00)</option>
+                            <option value="fuera" <?php if (($tipo_envio ?? '') === 'fuera') echo 'selected'; ?>>Fuera de la ciudad (+S/ 15.00)</option>
                         </select>
                     </div>
                 </div>
 
-                <!-- CAMPO DE DIRECCIÓN CON GOOGLE PLACES AUTOCOMPLETE -->
                 <div class="form-group">
                     <label for="direccion">Dirección exacta de entrega *</label>
-                    <input type="text" id="direccion" name="direccion" required placeholder="Empieza a escribir tu dirección..." autocomplete="off">
+                    <input type="text" id="direccion" name="direccion" required placeholder="Empieza a escribir tu dirección..." autocomplete="off" value="<?php echo htmlspecialchars($direccion ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+                </div>
+
+                <!-- SECCIÓN DE MÉTODO DE PAGO -->
+                <div class="form-group" style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
+                    <h2 class="checkout-title">Método de pago</h2>
+
+                    <div class="metodos-pago-container">
+                        <label class="metodo-opcion">
+                            <input type="radio" name="metodo_pago" value="Yape/Plin" required onchange="mostrarOpcionesPago()">
+                            <strong>📱 Yape / Plin</strong>
+                        </label>
+                        <label class="metodo-opcion">
+                            <input type="radio" name="metodo_pago" value="Transferencia BCP" <?php if (!MODO_DEMO && !getenv('BCP_CUENTA')) echo 'disabled'; ?> onchange="mostrarOpcionesPago()">
+                            <strong>🏦 Transferencia BCP<?php if (!MODO_DEMO && !getenv('BCP_CUENTA')) echo ' (no disponible)'; ?></strong>
+                        </label>
+                        <label class="metodo-opcion">
+                            <input type="radio" name="metodo_pago" value="Contraentrega" required onchange="mostrarOpcionesPago()">
+                            <strong>💵 Pago a Contraentrega</strong>
+                        </label>
+                    </div>
+
+                    <!-- Contenedor dinámico de instrucciones (Sin campo de operación) -->
+                    <div id="detalles_pago" style="display: none; padding: 20px; border: 1px solid #bfdbfe; border-radius: 8px; background: #eff6ff;">
+
+                        <!-- SECCIÓN YAPE / PLIN -->
+                        <div id="info_yape" style="display: none; text-align: center; margin-bottom: 15px;">
+                            <p style="font-size: 16px; margin-bottom: 5px; color: #1e293b;">
+                                <strong>Yapea o Plinea al:</strong> <span style="color: #7e22ce; font-size: 20px; font-weight: bold;">971 968 701</span>
+                            </p>
+                            <p style="margin-bottom: 10px; color: #475569;">Titular: Abraham Pastor</p>
+
+                            <!-- IMAGEN DEL QR -->
+                            <div style="background: white; display: inline-block; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1;">
+                                <img src="uploads/qr-yape.jpeg" alt="Código QR Yape" style="width: 160px; height: 160px; object-fit: contain; display: block;">
+                            </div>
+                            <p style="font-size: 12px; color: #64748b; margin-top: 5px;">Escanea el código desde tu app</p>
+                        </div>
+
+                        <!-- SECCIÓN TRANSFERENCIA BCP -->
+                        <div id="info_transferencia" style="display: none; margin-bottom: 15px;">
+                            <p style="margin-bottom: 8px; color: #1e293b;"><strong>Cta BCP Soles:</strong> <?php echo e(MODO_DEMO ? 'Cuenta de demostración' : getenv('BCP_CUENTA')); ?></p>
+                            <p style="margin-bottom: 8px; color: #1e293b;"><strong>CCI:</strong> <?php echo e(MODO_DEMO ? 'CCI de demostración' : getenv('BCP_CCI')); ?></p>
+                            <p style="margin-bottom: 15px; color: #1e293b;"><strong>Titular:</strong> <?php echo e(MODO_DEMO ? 'TechStore · Proyecto académico' : getenv('BCP_TITULAR')); ?></p>
+                        </div>
+                    </div>
                 </div>
 
                 <button type="submit" class="btn-confirm">Confirmar y Realizar Pedido</button>
             </form>
         </div>
 
-        <!-- RESUMEN DEL PEDIDO -->
         <div class="checkout-summary-box">
             <h2 class="checkout-title">Resumen de la Orden</h2>
             
@@ -301,39 +268,74 @@ $total_carrito_items = array_sum(array_column($_SESSION['carrito'], 'cantidad'))
                 <?php foreach ($_SESSION['carrito'] as $item): ?>
                     <div class="summary-item">
                         <span><?php echo htmlspecialchars($item['nombre']); ?> (x<?php echo $item['cantidad']; ?>)</span>
-                        <strong>$ <?php echo number_format($item['precio'] * $item['cantidad'], 2); ?></strong>
+                        <strong>S/ <?php echo number_format($item['precio'] * $item['cantidad'], 2); ?></strong>
                     </div>
                 <?php endforeach; ?>
             </div>
 
             <div class="summary-item">
                 <span>Subtotal productos:</span>
-                <strong>$ <?php echo number_format($total_productos, 2); ?></strong>
+                <strong>S/ <?php echo number_format($total_productos, 2); ?></strong>
             </div>
 
             <div class="summary-item">
                 <span>Envío:</span>
-                <span style="font-size: 12px; color: #666;">Calculado según zona</span>
+                <strong id="costo-envio">Gratis</strong>
             </div>
 
             <div class="summary-total">
                 <span>Total a Pagar:</span>
-                <span>$ <?php echo number_format($total_productos, 2); ?></span>
+                <span id="total-general">S/ <?php echo number_format($total_productos, 2); ?></span>
             </div>
         </div>
 
     </div>
 
-    <!-- SCRIPT DE ACTIVACIÓN DE GOOGLE PLACES AUTOCOMPLETE -->
     <script>
     function initAutocomplete() {
+        if (!window.google?.maps?.places) return;
         const inputDir = document.getElementById('direccion');
         new google.maps.places.Autocomplete(inputDir, {
-            types: ['address']
+            types: ['address'], fields: ['formatted_address'], componentRestrictions: {country:'pe'}
         });
     }
-    window.onload = initAutocomplete;
+
+    function mostrarOpcionesPago() {
+        const radios = document.querySelector('input[name="metodo_pago"]:checked');
+        if (!radios) return;
+
+        const metodo = radios.value;
+        const contenedorDetalles = document.getElementById('detalles_pago');
+        const infoYape = document.getElementById('info_yape');
+        const infoTransferencia = document.getElementById('info_transferencia');
+
+        if (metodo === 'Yape/Plin' || metodo === 'Transferencia BCP') {
+            contenedorDetalles.style.display = 'block';
+
+            if (metodo === 'Yape/Plin') {
+                infoYape.style.display = 'block';
+                infoTransferencia.style.display = 'none';
+                calcularTotalGeneral();
+            } else {
+                infoYape.style.display = 'none';
+                infoTransferencia.style.display = 'block';
+            }
+        } else {
+            // Contraentrega
+            contenedorDetalles.style.display = 'none';
+        }
+    }
+
+    function calcularTotalGeneral() {
+        const envio = document.getElementById('tipo_envio').value === 'fuera' ? 15 : 0;
+        document.getElementById('costo-envio').textContent = envio ? 'S/ 15.00' : 'Gratis';
+        document.getElementById('total-general').textContent = 'S/ ' + (<?php echo json_encode((float)$total_productos); ?> + envio).toFixed(2);
+    }
+    document.addEventListener('DOMContentLoaded', calcularTotalGeneral);
     </script>
+    <?php if ($clave_maps!==''): ?>
+    <script async src="https://maps.googleapis.com/maps/api/js?key=<?= rawurlencode($clave_maps) ?>&amp;loading=async&amp;libraries=places&amp;callback=initAutocomplete"></script>
+    <?php endif; ?>
 
 </body>
 </html>

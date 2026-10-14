@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . "/../includes/seguridad.php";
 // =====================================================
 // CONFIGURACIÓN DE CONEXIÓN A LA BASE DE DATOS (PDO)
 // =====================================================
@@ -18,9 +19,14 @@ try {
     
     // Configurar el modo de fetch predeterminado como array asociativo
     $conexion->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+    $conexion->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+    $conexion->exec("SET time_zone = '-05:00'");
 
 } catch (PDOException $e) {
     // Si falla la conexión, detener la ejecución y mostrar un mensaje limpio
-    die("Error de conexión a la base de datos: " . $e->getMessage());
+    error_log($e->getMessage());
+    if (PHP_SAPI === 'cli') { fwrite(STDERR, 'No se pudo conectar a MySQL.' . PHP_EOL); exit(1); }
+    http_response_code(503);
+    exit('No se pudo conectar a MySQL. Comprueba que esté iniciado y revisa la configuración DB_HOST / DB_NAME.');
 }
 ?>

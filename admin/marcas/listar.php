@@ -31,22 +31,13 @@ try {
         .alert-success { background: #e8f8f5; color: #27ae60; padding: 10px 15px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
         .alert-error { background: #fde8e8; color: #c0392b; padding: 10px 15px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
     </style>
+<link rel="stylesheet" href="../../css/admin-mejoras.css?v=20261013-menu">
+<link rel="stylesheet" href="../../css/experiencia.css?v=20261014"><script src="../../js/experiencia.js?v=20261014" defer></script>
+<link rel="stylesheet" href="../../css/admin-experiencia.css?v=1"><script src="../../js/admin-experiencia.js?v=1" defer></script>
 </head>
 <body>
 
-    <aside class="admin-sidebar">
-        <div class="sidebar-brand">TechStore Admin</div>
-        <ul class="sidebar-menu">
-            <li><a href="../dashboard.php">📊 Dashboard</a></li>
-            <li><a href="../productos/listar.php">📦 Productos</a></li>
-            <li><a href="../categorias/listar.php">🗂️ Categorías</a></li>
-            <li><a href="listar.php" class="active">🏷️ Marcas</a></li>
-            <li><a href="../pedidos/listar.php">🛒 Pedidos</a></li>
-        </ul>
-        <div class="sidebar-footer">
-            <a href="../../logout.php" class="btn-logout">Cerrar Sesión</a>
-        </div>
-    </aside>
+    <?php render_admin_sidebar('marcas'); ?>
 
     <div class="admin-main">
         <header class="admin-header">
@@ -92,7 +83,7 @@ try {
                                 <td><?php echo $marca['fecha_registro']; ?></td>
                                 <td>
                                     <a href="editar.php?id=<?php echo $marca['id_marca']; ?>" class="btn-action btn-edit">Editar</a>
-                                    <a href="eliminar.php?id=<?php echo $marca['id_marca']; ?>" class="btn-action btn-delete" onclick="return confirm('¿Estás seguro de eliminar esta marca?');">Eliminar</a>
+                                    <form action="eliminar.php" method="POST" class="inline-action" onsubmit="return confirm('¿Eliminar este registro?');"><?php echo csrf_campo(); ?><input type="hidden" name="id" value="<?php echo $marca['id_marca']; ?>"><button type="submit" class="btn-action btn-delete">Eliminar</button></form>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+ml/cache_*.json
+*.log
+ml/artefactos/
+ml/*.lock
+ml/*.tmp
+database/respaldo_*.json

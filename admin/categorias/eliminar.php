@@ -2,7 +2,8 @@
 require_once '../../includes/verificar_admin.php';
 require_once '../../config/conexion.php';
 
-$id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+exigir_post();
+$id = intval($_POST['id'] ?? 0);
 
 if ($id > 0) {
     try {
