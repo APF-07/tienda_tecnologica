@@ -29,16 +29,17 @@ function guardar_imagen_producto(?array $archivo): ?string {
     if (!move_uploaded_file($temporal,$directorio.$nombre)) throw new RuntimeException('No se pudo guardar la imagen. Revisa los permisos de la carpeta de productos.');
     return $nombre;
 }
-function guardar_producto(PDO $db,array $datos,?array $archivo=null,int $id=0): int {
+function guardar_producto(PDO $db,array $datos,?array $archivo=null,int $id=0,?array &$anterior=null): int {
     validar_producto($datos);
     $imagenNueva=null;
     try {
         $db->beginTransaction();
         $imagen=null;
         if ($id) {
-            $stmt=$db->prepare('SELECT imagen FROM productos WHERE id_producto=? FOR UPDATE'); $stmt->execute([$id]); $actual=$stmt->fetch();
+            $stmt=$db->prepare('SELECT imagen,stock,estado FROM productos WHERE id_producto=? FOR UPDATE'); $stmt->execute([$id]); $actual=$stmt->fetch();
             if(!$actual) throw new RuntimeException('El producto ya no existe.');
             $imagen=$actual['imagen'];
+            $anterior=$actual;
         }
         $clasificacion=[];
         foreach(['categorias'=>'id_categoria','marcas'=>'id_marca'] as $tabla=>$campo) {

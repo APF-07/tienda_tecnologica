@@ -2,6 +2,7 @@
 require_once '../../includes/verificar_admin.php';
 require_once '../../config/conexion.php';
 require_once '../../includes/gestion_productos.php';
+require_once '../../includes/alerta_guardado.php';
 $error = '';
 $id = intval($_GET['id'] ?? 0);
 $producto = ['codigo'=>'','nombre'=>'','descripcion'=>'','id_categoria'=>'','id_marca'=>'','precio'=>'','stock'=>'10','estado'=>'1','imagen'=>null];
@@ -13,8 +14,10 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
     $datos = datos_producto($_POST);
     $producto = array_merge($producto,$datos);
     try {
-        guardar_producto($conexion,$datos,$_FILES['imagen'] ?? null,$id);
-        header('Location: listar.php?msg=' . rawurlencode('Producto guardado correctamente.')); exit;
+        $anterior=null;
+        guardar_producto($conexion,$datos,$_FILES['imagen'] ?? null,$id,$anterior);
+        $aviso=$anterior?notificar_stock_guardado($id,$anterior,$datos):'';
+        header('Location: listar.php?msg=' . rawurlencode($aviso?:'Producto guardado correctamente.')); exit;
     } catch (Throwable $e) {
         error_log($e->getMessage());
         $error = $e instanceof PDOException ? ($e->getCode()==23000 ? 'El código ya existe. Utiliza otro SKU.' : 'No se pudo guardar el producto. Inténtalo nuevamente.') : $e->getMessage();
