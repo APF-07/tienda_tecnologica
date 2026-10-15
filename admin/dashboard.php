@@ -1,6 +1,8 @@
 <?php
 require_once '../includes/verificar_admin.php';
 require_once '../config/conexion.php';
+require_once '../includes/alertas_operativas.php';
+try{revisar_alertas_operativas($conexion);}catch(Throwable $e){error_log('No se completó la revisión de alertas operativas.');}
 
 // Consultas estadísticas reales existentes
 try {

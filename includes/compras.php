@@ -1,16 +1,19 @@
 <?php
 require_once __DIR__.'/validacion.php';
+require_once __DIR__.'/alertas_operativas.php';
 function registrar_compra(PDO $conexion, array &$carrito, array $datos): int {
     $datos = datos_compra($datos);
     validar_compra($datos);
     foreach (['nombre','apellido','correo','telefono','dni','direccion','tipo_envio','metodo_pago'] as $campo) $$campo = $datos[$campo];
     if (!$carrito) throw new RuntimeException('El carrito está vacío.');
+    preparar_alertas_operativas($conexion);
+    $stockResultante=[];
     try {
             $conexion->beginTransaction();
             $total_centimos = 0;
             ksort($carrito);
             foreach ($carrito as &$item) {
-                $stmt = $conexion->prepare('SELECT p.nombre, p.precio, p.stock, p.estado FROM productos p JOIN categorias c ON c.id_categoria=p.id_categoria JOIN marcas m ON m.id_marca=p.id_marca WHERE p.id_producto = :id AND c.estado=1 AND m.estado=1 FOR UPDATE');
+                $stmt = $conexion->prepare('SELECT p.codigo,p.nombre, p.precio, p.stock, p.estado FROM productos p JOIN categorias c ON c.id_categoria=p.id_categoria JOIN marcas m ON m.id_marca=p.id_marca WHERE p.id_producto = :id AND c.estado=1 AND m.estado=1 FOR UPDATE');
                 $stmt->execute(['id' => $item['id_producto']]);
                 $producto = $stmt->fetch();
                 if (!is_int($item['cantidad']) || $item['cantidad'] < 1 || $item['cantidad'] > 2147483647) throw new RuntimeException('La cantidad del carrito no es válida.');
@@ -22,6 +25,7 @@ function registrar_compra(PDO $conexion, array &$carrito, array $datos): int {
                     throw new RuntimeException('El precio de un producto cambió. Revisa el total actualizado y confirma nuevamente.');
                 }
                 $item['nombre'] = $producto['nombre'];
+                $stockResultante[]=['id_producto'=>$item['id_producto'],'codigo'=>$producto['codigo'],'nombre'=>$producto['nombre'],'stock'=>(int)$producto['stock']-$item['cantidad']];
                 $total_centimos += precio_centimos($producto['precio']) * $item['cantidad'];
             }
             unset($item);
@@ -46,7 +50,10 @@ function registrar_compra(PDO $conexion, array &$carrito, array $datos): int {
                 $detalle->execute([$id_pedido,$item['id_producto'],$item['cantidad'],$item['precio'],decimal_centimos(precio_centimos($item['precio'])*$item['cantidad'])]);
                 $stock->execute([$item['cantidad'],$item['id_producto']]);
             }
+            registrar_stock_venta($conexion,(int)$id_pedido,$stockResultante);
             $conexion->commit();
+            // La alerta ya está en MySQL; el proveedor externo no puede deshacer la compra.
+            try{enviar_alertas_operativas($conexion,null,null,1);}catch(Throwable $e){error_log('Compra guardada; envío operativo pendiente de revisión.');}
             return (int)$id_pedido;
     } catch (Throwable $e) {
         unset($item);

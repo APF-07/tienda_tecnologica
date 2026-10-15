@@ -3,6 +3,7 @@ require_once '../../includes/verificar_admin.php';
 require_once '../../config/conexion.php';
 require_once '../../includes/multiagentes.php';
 require_once '../../includes/telegram.php';
+require_once '../../includes/alertas_operativas.php';
 $telegram=configuracion_telegram();$telegramListo=$telegram['token']!==''&&$telegram['chat_id']!=='';
 $archivoAuto=__DIR__.'/../../storage/multiagentes/automatizacion.json';$automatizacion=is_file($archivoAuto)?json_decode((string)file_get_contents($archivoAuto),true):null;
 $archivoUltima=__DIR__.'/../../storage/multiagentes/ultima_revision_automatica.json';$ultimaAuto=is_file($archivoUltima)?json_decode((string)file_get_contents($archivoUltima),true):null;
@@ -15,6 +16,7 @@ try{
             $_SESSION['telegram_ultima_prueba']=time();telegram_api($telegram,'sendMessage',['chat_id'=>$telegram['chat_id'],'text'=>'✅ TechStore: mensaje de prueba enviado desde el administrador. El bot de alertas está conectado.']);$_SESSION['agentes_aviso']='Telegram aceptó el mensaje de prueba.';
         }else{
             $resultado=ejecutar_multiagentes($conexion,isset($_POST['enviar_telegram']));$_SESSION['agentes_aviso']='Revisión completada. '.$resultado['notificaciones']['nuevas'].' alertas nuevas o con cambios.'.(isset($resultado['telegram'])?' Telegram: '.$resultado['telegram']['detalle']:'');
+            if(isset($_POST['enviar_telegram'])){$operativas=revisar_alertas_operativas($conexion);$_SESSION['agentes_aviso'].=' Compras y demoras: '.$operativas['estado'].'; '.$operativas['enviadas'].' avisos enviados.';}
         }
         header('Location: index.php');exit;
     }
