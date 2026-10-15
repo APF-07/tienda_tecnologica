@@ -81,7 +81,10 @@ function enviar_peticion_gemini(array $config,array $cuerpo): string {
         CURLOPT_HTTPHEADER=>['Content-Type: application/json','x-goog-api-key: '.$config['clave']],
         CURLOPT_POSTFIELDS=>json_encode($cuerpo,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)]);
     $cuerpoRespuesta=curl_exec($curl);$codigo=(int)curl_getinfo($curl,CURLINFO_HTTP_CODE);$error=curl_errno($curl);curl_close($curl);
-    if($error||$cuerpoRespuesta===false)throw new RuntimeException('No se pudo conectar con Gemini. Verifica internet y los certificados HTTPS de PHP.');
+    if($error||$cuerpoRespuesta===false){
+        error_log('Gemini transporte: cURL '.$error.'; HTTP '.$codigo);
+        throw new RuntimeException($error===28?'Gemini tardó más de lo permitido. Puedes reintentar la pregunta.':'No se pudo conectar con Gemini. Verifica internet y los certificados HTTPS de PHP.');
+    }
     // Nunca registra la clave, el prompt ni el contenido bruto del proveedor.
     return interpretar_gemini($codigo,json_decode($cuerpoRespuesta,true));
 }

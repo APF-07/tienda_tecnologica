@@ -209,6 +209,9 @@ $total_carrito_items = array_sum(array_column($_SESSION['carrito'], 'cantidad'))
 
                 <div class="form-group">
                     <label for="direccion">Dirección exacta de entrega *</label>
+                    <input type="hidden" id="entrega_lat" name="entrega_lat" value="<?= e($entrega_lat??'') ?>">
+                    <input type="hidden" id="entrega_lng" name="entrega_lng" value="<?= e($entrega_lng??'') ?>">
+                    <input type="hidden" id="entrega_place_id" name="entrega_place_id" value="<?= e($entrega_place_id??'') ?>">
                     <input type="text" id="direccion" name="direccion" required placeholder="Empieza a escribir tu dirección..." autocomplete="off" value="<?php echo htmlspecialchars($direccion ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                 </div>
 
@@ -292,11 +295,33 @@ $total_carrito_items = array_sum(array_column($_SESSION['carrito'], 'cantidad'))
     </div>
 
     <script>
+    const direccionEntrega=document.getElementById('direccion');
+    const estadoDestino=document.createElement('small');estadoDestino.id='destino_estado';
+    estadoDestino.textContent='Incluye distrito, ciudad y número. Selecciona una sugerencia para guardar el punto exacto.';
+    direccionEntrega.after(estadoDestino);
+    const enlaceDestino=document.createElement('a');enlaceDestino.id='destino_preview';enlaceDestino.textContent='Verificar ubicación en Google Maps ↗';enlaceDestino.target='_blank';enlaceDestino.rel='noopener noreferrer';enlaceDestino.hidden=true;
+    estadoDestino.after(enlaceDestino);
+    direccionEntrega.addEventListener('input',()=>{
+        ['entrega_lat','entrega_lng','entrega_place_id'].forEach(id=>document.getElementById(id).value='');
+        enlaceDestino.hidden=true;estadoDestino.textContent='Dirección modificada: selecciona de nuevo una sugerencia para confirmar el punto.';
+    });
     function initAutocomplete() {
         if (!window.google?.maps?.places) return;
         const inputDir = document.getElementById('direccion');
-        new google.maps.places.Autocomplete(inputDir, {
-            types: ['address'], fields: ['formatted_address'], componentRestrictions: {country:'pe'}
+        const autocomplete = new google.maps.places.Autocomplete(inputDir, {
+            types: ['address'], fields: ['formatted_address','geometry','place_id'], componentRestrictions: {country:'pe'}
+        });
+        autocomplete.addListener('place_changed', () => {
+            const place=autocomplete.getPlace();
+            if(!place.geometry?.location)return;
+            inputDir.value=place.formatted_address || inputDir.value;
+            document.getElementById('entrega_lat').value=place.geometry.location.lat();
+            document.getElementById('entrega_lng').value=place.geometry.location.lng();
+            document.getElementById('entrega_place_id').value=place.place_id || '';
+            document.getElementById('destino_estado').textContent='Ubicación seleccionada. Comprueba el punto antes de confirmar.';
+            const preview=document.getElementById('destino_preview');
+            preview.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(place.geometry.location.lat()+','+place.geometry.location.lng());
+            preview.hidden=false;
         });
     }
 

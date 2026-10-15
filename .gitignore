@@ -9,3 +9,4 @@ ml/artefactos/
 ml/*.lock
 ml/*.tmp
 database/respaldo_*.json
+storage/multiagentes/

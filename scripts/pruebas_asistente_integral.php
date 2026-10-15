@@ -25,4 +25,14 @@ $r=responder_asistente($db,'Segmentación de clientes',__DIR__.'/no-existe');$ch
 $contexto=json_encode(contexto_gemini($db,__DIR__.'/no-existe'));$check(str_contains($contexto,'categorias')&&str_contains($contexto,'marcas')&&!str_contains($contexto,'privado@example.test')&&!str_contains($contexto,'999111222'),'Contexto ampliado de Gemini contiene agregados sin contactos');
 $llamadas=0;$r=responder_con_gemini($db,'Correo de cliente #1',[],function()use(&$llamadas){$llamadas++;return 'No debe llamarse';},['habilitado'=>true,'clave'=>'simulada']);$check($llamadas===0&&$r['privado'],'Las fichas privadas nunca invocan Gemini');
 $check((int)$db->query('SELECT COUNT(*) FROM pedidos')->fetchColumn()===3,'Las consultas no modifican la base');
+$db->exec("INSERT INTO categorias VALUES(3,'Celulares',1),(4,'Audio especial',1); INSERT INTO marcas VALUES(3,'Samsung',1),(4,'Marca Nueva',1); INSERT INTO productos VALUES(4,'P4','Celular Uno','',300,4,1,3,3),(5,'P5','Laptop Samsung en nombre','',400,2,1,1,1),(6,'P6','Parlante nuevo','',80,7,1,4,4)");
+$r=responder_asistente($db,'De la marca Samsung qué tiene');$check(str_contains($r['texto'],'Celular Uno')&&!str_contains($r['texto'],'Laptop Samsung en nombre')&&!str_contains($r['texto'],'Laptop Uno'),'Marca exacta no se confunde con palabras del nombre del producto');
+$r=responder_asistente($db,'De la marca ASUS');$check(str_contains($r['texto'],'Laptop Uno')&&!str_contains($r['texto'],'Celular Uno'),'Cada marca consulta únicamente sus propios productos');
+$r=responder_asistente($db,'Celulares');$check(str_contains($r['texto'],'Celular Uno')&&!str_contains($r['texto'],'Laptop Uno'),'Categoría sola devuelve exclusivamente su categoría');
+$r=responder_asistente($db,'Celualres');$check(str_contains($r['texto'],'Celular Uno'),'Reconoce el error de escritura celualres');
+$r=responder_asistente($db,'Celulares de la marca ASUS');$check(str_contains($r['texto'],'0 productos encontrados')&&!str_contains($r['texto'],'Laptop Uno'),'Combina categoría y marca sin ensanchar resultados vacíos');
+$r=responder_asistente($db,'De la marca Marca Nueva');$check(str_contains($r['texto'],'Parlante nuevo'),'Marcas nuevas se reconocen desde la base sin programar sus nombres');
+$r=responder_asistente($db,'De la categoría Audio especial');$check(str_contains($r['texto'],'Parlante nuevo'),'Categorías nuevas se reconocen desde la base');
+$r=responder_asistente($db,'De la marca inexistente');$check(str_contains($r['texto'],'No encontré esa marca')&&!str_contains($r['texto'],'Laptop Uno'),'Marca inexistente no devuelve el catálogo completo');
+require_once __DIR__.'/../includes/listados.php';$l=listar_admin($db,'productos',['marca'=>'3','categoria'=>'3'],true);$check($l['total']===1&&$l['filas'][0]['nombre']==='Celular Uno','El listado y CSV conservan los filtros exactos del chat');
 echo "$n comprobaciones correctas. SQLite en memoria; sin API externa.\n";

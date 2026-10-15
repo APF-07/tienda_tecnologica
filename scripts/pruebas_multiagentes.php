@@ -1,0 +1,37 @@
+<?php
+if(PHP_SAPI!=='cli'){http_response_code(404);exit;}
+require __DIR__.'/../includes/multiagentes.php';
+$db=new PDO('sqlite::memory:');$db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE,PDO::FETCH_ASSOC);
+$db->exec('CREATE TABLE productos(id_producto INTEGER,codigo TEXT,nombre TEXT,stock INTEGER,estado INTEGER); CREATE TABLE pedidos(id_pedido INTEGER,estado TEXT,fecha_pedido TEXT); CREATE TABLE detalle_pedidos(id_pedido INTEGER,id_producto INTEGER,cantidad INTEGER)');
+$db->exec("INSERT INTO productos VALUES(1,'A','Agotado',0,1),(2,'B','Baja cobertura',2,1),(3,'C','Sin ventas',5,1),(4,'D','Normal',30,1),(5,'E','Inactivo',1,0); INSERT INTO pedidos VALUES(1,'Entregado','2026-10-14 09:00:00'),(2,'Cancelado','2026-10-14 09:00:00'),(3,'Pendiente','2026-10-14 09:00:00'),(4,'Entregado','2026-08-01 09:00:00'); INSERT INTO detalle_pedidos VALUES(1,2,60),(2,2,999),(3,2,999),(4,2,999)");
+$n=0;$check=function($ok,$texto)use(&$n){if(!$ok)throw new RuntimeException($texto);$n++;echo "OK: $texto\n";};
+$coordinador=new CoordinadorTienda();$r=$coordinador->ejecutar($db,[],'2026-10-14 12:00:00');
+$check($r['inventario']['total']===3&&$r['inventario']['agotados']===1,'Inventario excluye inactivos y stock superior a cinco');
+$check(array_column($r['traza'],'agente')===['inventario','analisis','notificaciones'],'Coordinador registra el paso de mensajes entre agentes');
+$a=$r['analisis']['alertas'];$check($a[0]['prioridad']==='Crítica'&&$a[0]['id_producto']===1,'Los agotados tienen prioridad crítica');
+$check($a[1]['vendidas_30_dias']===60&&$a[1]['cobertura_dias']===1.0,'Análisis excluye cancelados, pendientes y ventas fuera del periodo');
+$check($a[1]['prioridad']==='Alta'&&$a[1]['reposicion_sugerida']===26,'Prioriza cobertura y calcula propuesta explícita de reposición');
+$check($a[2]['cobertura_dias']===null&&$a[2]['prioridad']==='Revisar','Sin demanda observable no inventa fecha de agotamiento');
+$check($r['notificaciones']['nuevas']===3,'Primera ejecución genera una alerta por hallazgo');
+$r2=$coordinador->ejecutar($db,$r['notificaciones']['activas'],'2026-10-14 12:01:00');
+$check($r2['notificaciones']['nuevas']===0,'Repetir revisión no duplica el mismo stock y prioridad');
+$db->exec('UPDATE productos SET stock=3 WHERE id_producto=2');$r3=$coordinador->ejecutar($db,$r2['notificaciones']['activas'],'2026-10-14 12:02:00');
+$check($r3['notificaciones']['nuevas']===1,'Un cambio real de stock actualiza solo la alerta afectada');
+$db->exec('UPDATE productos SET stock=10 WHERE id_producto=1');$r4=$coordinador->ejecutar($db,$r3['notificaciones']['activas'],'2026-10-14 12:03:00');
+$check($r4['notificaciones']['resueltas']===1&&count($r4['notificaciones']['activas'])===2,'La reposición resuelve la alerta anterior');
+$check((int)$db->query('SELECT stock FROM productos WHERE id_producto=2')->fetchColumn()===3,'Los agentes no modifican el stock');
+$check(str_contains($r4['notificaciones']['canal'],'no se ha enviado'),'No declara envíos externos inexistentes');
+$rec=array_values($r4['notificaciones']['recuperadas']);
+$check($r4['notificaciones']['nuevas_recuperadas']===1&&$rec[0]['stock_anterior']===0&&(int)$rec[0]['producto']['stock']===10,'Recuperación incluye existencias anteriores y actuales');
+$check($r3['notificaciones']['nuevas_recuperadas']===0,'Un aumento que sigue bajo el umbral no cuenta como recuperación');
+$r5=$coordinador->ejecutar($db,$r4['notificaciones']['activas'],'2026-10-14 12:04:00',$r4['notificaciones']['recuperadas']);
+$check($r5['notificaciones']['nuevas_recuperadas']===0&&count($r5['notificaciones']['recuperadas'])===1,'Repetir la revisión conserva el evento pendiente sin duplicarlo');
+$db->exec('UPDATE productos SET estado=0 WHERE id_producto=2');$r6=$coordinador->ejecutar($db,$r5['notificaciones']['activas'],'2026-10-14 12:05:00',$r5['notificaciones']['recuperadas']);
+$check($r6['notificaciones']['nuevas_recuperadas']===0,'Desactivar un producto no se anuncia como reposición');
+$db->exec('DELETE FROM productos WHERE id_producto=3');$r7=$coordinador->ejecutar($db,$r6['notificaciones']['activas'],'2026-10-14 12:06:00',$r6['notificaciones']['recuperadas']);
+$check($r7['notificaciones']['nuevas_recuperadas']===0,'Eliminar un producto no se anuncia como reposición');
+$db->exec('UPDATE productos SET stock=2 WHERE id_producto=1');$r8=$coordinador->ejecutar($db,$r7['notificaciones']['activas'],'2026-10-14 12:07:00',$r7['notificaciones']['recuperadas']);
+$check(count($r8['notificaciones']['recuperadas'])===0,'No envía una recuperación antigua si vuelve a faltar stock');
+$db->exec('UPDATE productos SET stock=6 WHERE id_producto=1');$r9=$coordinador->ejecutar($db,$r8['notificaciones']['activas'],'2026-10-14 12:08:00',$r8['notificaciones']['recuperadas']);
+$check($r9['notificaciones']['nuevas_recuperadas']===1&&count($r9['notificaciones']['recuperadas'])===1,'Una nueva reposición a seis unidades crea un nuevo ciclo de recuperación');
+echo "$n pruebas correctas. SQLite temporal, sin API ni mensajes externos.\n";

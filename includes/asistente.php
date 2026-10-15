@@ -2,6 +2,7 @@
 require_once __DIR__.'/../config/app.php';
 require_once __DIR__.'/consultas_asistente.php';
 require_once __DIR__.'/asistente_integral.php';
+require_once __DIR__.'/filtros_asistente.php';
 function intencion_asistente(string $pregunta): string {
     $texto = strtolower(strtr($pregunta,['Á'=>'a','É'=>'e','Í'=>'i','Ó'=>'o','Ú'=>'u','á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','Ñ'=>'n','ñ'=>'n']));
     if (preg_match('/\b(borra|borrar|elimina|eliminar|modifica|modificar|actualiza|actualizar|cambia|cambiar|entrena|entrenar|cancela|cancelar)\b/u',$texto)) return 'accion';
@@ -31,10 +32,12 @@ function informe_asistente(string $tipo, ?string $directorio = null): ?array {
     return is_array($informe) && ($informe['schema_version'] ?? 0) === 2 ? $informe : null;
 }
 function requiere_gemini_asistente(string $pregunta): bool {
+    if(consulta_clasificacion_admin($pregunta))return false;
     if(tipo_consulta_integral($pregunta)!==null)return false;
     return !in_array(intencion_asistente($pregunta),['accion','comprador_frecuente','producto_mas_vendido','ventas_actuales','buscar_productos','stock','pendientes','recientes','pedidos','clientes'],true);
 }
 function responder_asistente(PDO $db, string $pregunta, ?string $directorio = null): array {
+    $clasificacion=filtrar_clasificacion_admin($db,$pregunta);if($clasificacion!==null)return $clasificacion;
     $integral=respuesta_integral($db,$pregunta,$directorio);if($integral!==null)return $integral;
     $intencion = intencion_asistente($pregunta);
     $respuesta = ['texto'=>'','enlaces'=>[],'fuente'=>'Ayuda del asistente','fecha'=>date('d/m/Y H:i')];

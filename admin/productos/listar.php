@@ -51,7 +51,7 @@ $productos = $lista['filas'];
                 <div class="alert-error"><?php echo htmlspecialchars($error); ?></div>
             <?php endif; ?>
 
-            <div class="admin-toolbar"><a href="agregar.php" class="btn-add">+ Nuevo producto</a><a class="btn-action" href="exportar.php?<?php echo e(http_build_query(array_intersect_key($_GET,array_flip(['q','estado','orden','stock'])))); ?>">Descargar CSV</a></div><?php render_filtros_admin('productos',$lista); ?>
+            <div class="admin-toolbar"><a href="agregar.php" class="btn-add">+ Nuevo producto</a><a class="btn-action" href="exportar.php?<?php echo e(http_build_query(array_intersect_key($_GET,array_flip(['q','estado','orden','stock','marca','categoria'])))); ?>">Descargar CSV</a></div><?php render_filtros_admin('productos',$lista); ?>
 
             <table>
                 <thead>

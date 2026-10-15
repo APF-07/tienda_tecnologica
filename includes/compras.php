@@ -36,6 +36,10 @@ function registrar_compra(PDO $conexion, array &$carrito, array $datos): int {
             $stmt = $conexion->prepare("INSERT INTO pedidos (id_cliente,total,estado,metodo_pago,cliente_nombre,cliente_apellido,cliente_correo,cliente_telefono,cliente_direccion) VALUES (?,?,'Pendiente',?,?,?,?,?,?)");
             $stmt->execute([$id_cliente,$total_general,$metodo_pago,$nombre,$apellido,$correo,$telefono,$direccion_completa]);
             $id_pedido = $conexion->lastInsertId();
+            if($datos['entrega_lat']!==''&&$datos['entrega_lng']!==''){
+                $ubicacion=$conexion->prepare('UPDATE pedidos SET entrega_lat=?,entrega_lng=?,entrega_place_id=? WHERE id_pedido=?');
+                $ubicacion->execute([$datos['entrega_lat'],$datos['entrega_lng'],$datos['entrega_place_id']?:null,$id_pedido]);
+            }
             $detalle = $conexion->prepare('INSERT INTO detalle_pedidos (id_pedido,id_producto,cantidad,precio_unitario,subtotal) VALUES (?,?,?,?,?)');
             $stock = $conexion->prepare('UPDATE productos SET stock = stock - ? WHERE id_producto = ?');
             foreach ($carrito as $item) {

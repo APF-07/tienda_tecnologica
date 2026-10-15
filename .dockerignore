@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+!.env.example
+storage/multiagentes
+ml/cache_*.json
+ml/artefactos
+ml/*.log
+ml/*.lock
+ml/*.tmp
+**/__pycache__
+**/*.pyc
+database/respaldo_*.json

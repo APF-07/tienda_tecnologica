@@ -1,6 +1,7 @@
 <?php
 require_once '../../includes/verificar_admin.php';
 require_once '../../config/conexion.php';
+require_once '../../includes/destino.php';
 
 $id_pedido = isset($_GET['id']) ? intval($_GET['id']) : 0;
 
@@ -197,33 +198,20 @@ try {
                 </div>
 
                 <!-- GOOGLE MAPS CON EL RECORRIDO (DESDE LA TIENDA HASTA EL CLIENTE) -->
-                <h3 style="font-size: 14px; color: #22D3EE; margin-bottom: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Recorrido de Entrega (Tienda &rarr; Cliente)</h3>
+                <h3 style="font-size: 14px; color: #22D3EE; margin-bottom: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Destino de entrega</h3>
                 <div class="map-container">
                     <?php 
-                        // Origen fijo: Tu tienda tecnológica en Cerro de Pasco
-                        $origen_tienda = "Av. Circunvalacion Arenales Mz.P Lt.8, Cerro de Pasco";
-                        
-                        // Extraemos solo la parte de la dirección usando una expresión regular
-                        // Esto busca lo que esté después de "Envío:" o toma la cadena limpia si no tiene ese formato
-                        $texto_envio = $pedido['direccion'];
-                        if (preg_match('/(?:^|\|)\s*Dir:\s*(.*)$/iu', $texto_envio, $coincidencias)) {
-                            $destino_limpio = trim($coincidencias[1]);
-                        } else {
-                            // Si por alguna razón no tiene la etiqueta, limpiamos por si acaso el DNI inicial
-                            $destino_limpio = preg_replace('/^DNI:\s*\d+\s*\|\s*/i', '', $texto_envio);
-                        }
-                        
-                        // Codificamos ambas variables para evitar errores en la URL
-                        $saddr = urlencode($origen_tienda);
-                        $daddr = urlencode($destino_limpio);
+                        $destinoMapa = destino_pedido($pedido);
                     ?>
                     <iframe 
-                        src="https://maps.google.com/maps?saddr=<?php echo $saddr; ?>&daddr=<?php echo $daddr; ?>&output=embed" 
+                        title="Destino de entrega" src="<?= e($destinoMapa['mapa']) ?>"
                         allowfullscreen="" 
                         loading="lazy" 
                         referrerpolicy="no-referrer-when-downgrade">
                     </iframe>
                 </div>
+                <p><?= $destinoMapa['preciso']?'Punto seleccionado al comprar.':'Dirección escrita: ubicación aproximada; confirma el distrito y la ciudad con el cliente.' ?></p>
+                <a class="btn btn-primary" href="<?= e($destinoMapa['ruta']) ?>" target="_blank" rel="noopener noreferrer">Cómo llegar al destino ↗</a>
 
                 <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.08); margin: 25px 0;">
 

@@ -43,6 +43,7 @@ function render_admin_sidebar(string $activo = ''): void {
     }
     $esMl = $activo === 'ml' || strpos($_SERVER['SCRIPT_NAME'] ?? '', '/admin/ml/') !== false;
     echo '<li><a href="'.e(ruta('admin/asistente/index.php')).'"'.($activo==='asistente'?' class="active" aria-current="page"':'').'>'.$icono('asistente').'<span class="menu-label">Asistente</span></a></li>';
+    echo '<li><a href="'.e(ruta('admin/agentes/index.php')).'"'.($activo==='agentes'?' class="active" aria-current="page"':'').'>'.$icono('categorias').'<span class="menu-label">Agentes y alertas</span></a></li>';
     echo '<li class="menu-analytics"><a href="'.e(ruta('admin/ml/pedidos_ia.php')).'"'.($esMl?' class="active" aria-current="page"':'').'>'.$icono('ml').'<span class="menu-label">Analítica y proyección</span></a></li><li class="menu-store"><a href="'.e(ruta('tienda.php')).'">'.$icono('tienda').'<span class="menu-label">Ver tienda</span><span class="menu-external" aria-hidden="true">↗</span></a></li></ul></nav><div class="sidebar-footer">';
     echo '<form action="'.e(ruta('logout.php')).'" method="POST">'.csrf_campo().'<button class="btn-logout" type="submit">'.$icono('salir').'<span>Cerrar sesión</span></button></form></div></aside>';
 }

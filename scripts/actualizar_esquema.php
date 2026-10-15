@@ -10,7 +10,10 @@ $nuevas = [
     'cliente_apellido' => 'VARCHAR(100) NULL',
     'cliente_correo' => 'VARCHAR(100) NULL',
     'cliente_telefono' => 'VARCHAR(20) NULL',
-    'cliente_direccion' => 'TEXT NULL'
+    'cliente_direccion' => 'TEXT NULL',
+    'entrega_lat' => 'DECIMAL(10,7) NULL',
+    'entrega_lng' => 'DECIMAL(10,7) NULL',
+    'entrega_place_id' => 'VARCHAR(255) NULL'
 ];
 foreach ($nuevas as $nombre => $definicion) {
     if (!in_array($nombre, $columnas, true)) {

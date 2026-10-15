@@ -89,6 +89,9 @@ CREATE TABLE pedidos (
     cliente_correo VARCHAR(100) NULL,
     cliente_telefono VARCHAR(20) NULL,
     cliente_direccion TEXT NULL,
+    entrega_lat DECIMAL(10,7) NULL,
+    entrega_lng DECIMAL(10,7) NULL,
+    entrega_place_id VARCHAR(255) NULL,
     estado ENUM('Pendiente', 'Confirmado', 'En preparación', 'Enviado', 'Entregado', 'Cancelado') NOT NULL DEFAULT 'Pendiente',
     CONSTRAINT fk_pedido_cliente FOREIGN KEY (id_cliente) 
         REFERENCES clientes(id_cliente) ON DELETE RESTRICT ON UPDATE CASCADE
