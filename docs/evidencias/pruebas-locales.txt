@@ -1,0 +1,109 @@
+TechStore - evidencia automatizada local
+Fecha UTC: 2026-10-15T17:18:10.5664806Z
+Sin API externa: proveedores simulados y bases SQLite temporales.
+
+Suite: scripts/pruebas_alerta_guardado.php
+OK 0 a 15 envía recuperación sin revisión previa
+OK Guardar sin cambio no envía
+OK 15 a 3 envía stock bajo
+OK Desactivación no envía recuperación
+OK Fallo de Telegram conserva confirmación del guardado
+Codigo de salida: 0
+
+Suite: scripts/pruebas_telegram.php
+OK: Sin configuración no se hacen envíos
+OK: Envío usa destinatario configurado y texto sin interpretar HTML
+OK: Se registra éxito solo después de aceptación del proveedor
+OK: Revisiones repetidas no repiten el mismo aviso
+OK: Timeout se marca incierto sin declarar éxito
+OK: Entrega incierta no se reenvía automáticamente
+OK: Rechazo explícito conserva un estado de error
+OK: Envío usa destinatario configurado y texto sin interpretar HTML
+OK: Tras rechazo explícito se puede intentar en otra revisión
+OK: Resumen agrupa alertas y respeta longitud de Telegram
+OK: Envío usa destinatario configurado y texto sin interpretar HTML
+OK: La recuperación se envía aunque ya no haya alertas de stock bajo
+OK: No repite el aviso de recuperación ya aceptado
+OK: El mensaje de recuperación comunica los dos estados
+14 comprobaciones correctas. Sin token real ni conexión externa.
+Codigo de salida: 0
+
+Suite: scripts/pruebas_destino.php
+OK Ruta conserva coordenadas y lugar seleccionado
+OK Ruta permite usar el origen real del repartidor
+OK Pedidos anteriores excluyen DNI y método de envío del destino
+OK Caracteres especiales no alteran el destino
+OK Rechaza coordenadas fuera de rango
+OK Acepta coordenadas válidas
+6 pruebas completadas.
+Codigo de salida: 0
+
+Suite: scripts/pruebas_multiagentes.php
+OK: Inventario excluye inactivos y stock superior a cinco
+OK: Coordinador registra el paso de mensajes entre agentes
+OK: Los agotados tienen prioridad crítica
+OK: Análisis excluye cancelados, pendientes y ventas fuera del periodo
+OK: Prioriza cobertura y calcula propuesta explícita de reposición
+OK: Sin demanda observable no inventa fecha de agotamiento
+OK: Primera ejecución genera una alerta por hallazgo
+OK: Repetir revisión no duplica el mismo stock y prioridad
+OK: Un cambio real de stock actualiza solo la alerta afectada
+OK: La reposición resuelve la alerta anterior
+OK: Los agentes no modifican el stock
+OK: No declara envíos externos inexistentes
+OK: Recuperación incluye existencias anteriores y actuales
+OK: Un aumento que sigue bajo el umbral no cuenta como recuperación
+OK: Repetir la revisión conserva el evento pendiente sin duplicarlo
+OK: Desactivar un producto no se anuncia como reposición
+OK: Eliminar un producto no se anuncia como reposición
+OK: No envía una recuperación antigua si vuelve a faltar stock
+OK: Una nueva reposición a seis unidades crea un nuevo ciclo de recuperación
+19 pruebas correctas. SQLite temporal, sin API ni mensajes externos.
+Codigo de salida: 0
+
+Suite: scripts/pruebas_gemini.php
+OK: No se transmiten campos de contacto ni credenciales
+OK: Se excluyen productos inactivos
+OK: Historial y tamaño limitados
+OK: Clave fuera del prompt e instrucciones separadas
+OK: Respuesta generada con transporte simulado
+OK: Las acciones no invocan el proveedor
+OK: Sin clave no hay llamada externa
+OK: Modo deshabilitado no consume cuota
+OK: Cuota agotada devuelve información local
+OK: No se expone el cuerpo de error del proveedor
+OK: Respuesta truncada no se presenta como completa
+OK: No se muestran partes internas del modelo
+OK: Base de datos permanece sin cambios
+13 pruebas correctas. Sin internet ni claves reales.
+Codigo de salida: 0
+
+Suite: scripts/pruebas_asistente_integral.php
+OK: Distribución por categoría cuenta activos e inactivos sin duplicar stock
+OK: Las marcas inactivas también están disponibles para administración
+OK: Catálogo distingue productos inactivos
+OK: Ficha individual incluye categoría, marca y descripción
+OK: Pedido individual usa precio histórico y evita historial externo
+OK: Pedido inexistente no se inventa
+OK: Contacto se devuelve únicamente por consulta local marcada privada
+OK: Búsqueda de cliente combina nombre y apellido con parámetros
+OK: Clientes sin compras excluye clientes con pedidos confirmados
+OK: Pedidos por estado y enlace filtrado
+OK: Filtro de pedidos respeta el periodo solicitado
+OK: Métodos de pago distinguen importe registrado de cobro
+OK: Ventas agrupadas excluyen cancelados, pendientes y envío
+OK: Sin informe de segmentación no se inventan resultados
+OK: Contexto ampliado de Gemini contiene agregados sin contactos
+OK: Las fichas privadas nunca invocan Gemini
+OK: Las consultas no modifican la base
+OK: Marca exacta no se confunde con palabras del nombre del producto
+OK: Cada marca consulta únicamente sus propios productos
+OK: Categoría sola devuelve exclusivamente su categoría
+OK: Reconoce el error de escritura celualres
+OK: Combina categoría y marca sin ensanchar resultados vacíos
+OK: Marcas nuevas se reconocen desde la base sin programar sus nombres
+OK: Categorías nuevas se reconocen desde la base
+OK: Marca inexistente no devuelve el catálogo completo
+OK: El listado y CSV conservan los filtros exactos del chat
+26 comprobaciones correctas. SQLite en memoria; sin API externa.
+Codigo de salida: 0

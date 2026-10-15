@@ -2,6 +2,12 @@
 
 Proyecto PHP 8.2 y MySQL/MariaDB para catálogo, carrito, pedidos y administración.
 
+## Arquitectura y evidencias
+
+- [Diagramas de arquitectura y flujo de agentes](docs/ARQUITECTURA.md).
+- [Resultados de pruebas y guion de demostración](docs/EVIDENCIAS_PRUEBAS.md).
+- [Salida reproducible de pruebas locales](docs/evidencias/pruebas-locales.txt).
+
 ## Iniciar en XAMPP
 
 1. Inicia Apache y MySQL desde XAMPP.

@@ -1,0 +1,11 @@
+TechStore - evidencia local de ML
+Fecha de verificación: 2026-10-15 (America/Lima)
+Comando: python -m unittest discover -s tests -p test_modelos.py
+Salida observada:
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 25.406s
+
+OK
+Código de salida observado: 0
+Pruebas unitarias locales; no ejecuta una validación del servicio Render.
