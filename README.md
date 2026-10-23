@@ -1,135 +1,216 @@
 # TechStore · Tienda tecnológica
 
-Proyecto PHP 8.2 y MySQL/MariaDB para catálogo, carrito, pedidos y administración.
+Sistema académico de comercio electrónico y administración de una tienda tecnológica, desarrollado con **PHP, MySQL/MariaDB, Python y JavaScript**. Integra catálogo, compras, inventario, analítica, Machine Learning, asistentes con un LLM y agentes que automatizan tareas de supervisión.
 
-## Arquitectura y evidencias
+Los importes se presentan en **soles (S/)**. La base utilizada en las evaluaciones contiene datos académicos; sus métricas no demuestran precisión en un negocio real.
 
-- [Cinco predicciones y consultas por cliente/producto/pedido](docs/PREDICCIONES_INDIVIDUALES.md).
+## ¿Qué hace el sistema?
 
-- [Cinco predicciones y consultas por cliente/producto/pedido](docs/PREDICCIONES_INDIVIDUALES.md).
+### Tienda para clientes
 
-- [Dashboard automático, cinco agentes y seguimiento ML](docs/DASHBOARD_AUTOMATICO.md).
+- Catálogo con búsqueda y filtros por categoría y marca.
+- Detalle de productos, disponibilidad e imágenes.
+- Carrito, checkout y registro de pedidos con validación de precios y existencias.
+- Métodos de pago registrados: Yape/Plin, tarjeta y contraentrega, según la configuración del proyecto. Registrar un método o pedido no acredita un pago recibido ni una integración bancaria automática.
+- Dirección de entrega y autocompletado opcional con Google Maps.
+- Seguimiento del pedido mediante su número y correo de compra.
+- Chatbot para orientar sobre la tienda y recomendaciones de productos relacionados.
 
-- [Diagramas de arquitectura y flujo de agentes](docs/ARQUITECTURA.md).
-- [Resultados de pruebas y guion de demostración](docs/EVIDENCIAS_PRUEBAS.md).
-- [Salida reproducible de pruebas locales](docs/evidencias/pruebas-locales.txt).
+### Administración
 
-## Iniciar en XAMPP
+- Gestión de productos, categorías, marcas, clientes y pedidos.
+- Dashboard de ventas, pedidos e inventario con consulta automática de datos.
+- Búsquedas, filtros, paginación, exportaciones CSV e historial de pedidos.
+- Movimientos de inventario, proveedores, reposiciones, recepciones y devoluciones.
+- Usuarios con roles de administrador, vendedor y almacén.
+- Asistente administrativo, resultados ML, centro de acciones y seguimiento de agentes.
+- Alertas de Telegram cuando el bot, el destinatario y la automatización están configurados.
 
-1. Inicia Apache y MySQL desde XAMPP.
-2. Abre `http://localhost:8080/tienda_tecnologica/tienda.php` para el catálogo y `http://localhost:8080/tienda_tecnologica/index.php` para el acceso administrativo.
-3. Para una instalación nueva, crea la base `tienda_tecnologica` e importa `database/tienda_tecnologica.sql`. Ese archivo contiene estructura y datos iniciales, no el volcado con información personal.
-4. Si ya tienes una base existente, conserva sus datos y ejecuta desde esta carpeta:
+## Acceso al sistema
+
+Con Apache en el puerto **8080**:
+
+| Apartado | Dirección local |
+|---|---|
+| Tienda | http://localhost:8080/tienda_tecnologica/tienda.php |
+| Inicio de sesión administrativo | http://localhost:8080/tienda_tecnologica/index.php |
+| Panel administrativo | http://localhost:8080/tienda_tecnologica/admin/dashboard.php |
+| Cinco controles ML de negocio | http://localhost:8080/tienda_tecnologica/admin/ml/controles.php |
+| Configuración y entrenamiento ML | http://localhost:8080/tienda_tecnologica/admin/ml/control.php |
+| Dashboard de predicciones | http://localhost:8080/tienda_tecnologica/admin/ml/predicciones.php |
+| Asistente administrativo | http://localhost:8080/tienda_tecnologica/admin/asistente/index.php |
+| Agentes y alertas | http://localhost:8080/tienda_tecnologica/admin/agentes/index.php |
+
+### Credenciales de prueba
+
+**Base local del proyecto utilizada por el autor:**
+
+| Rol | Correo | Contraseña de prueba |
+|---|---|---|
+| Administrador | `admin@admin.com` | `123456admin` |
+
+**Instalación nueva importando únicamente `database/tienda_tecnologica.sql`:**
+
+| Rol | Correo | Contraseña inicial del SQL |
+|---|---|---|
+| Administrador | `admin@tienda.com` | `password` |
+
+Son accesos de prueba para dos bases diferentes. Importar el SQL inicial no crea automáticamente el usuario de la base local del autor. Una base existente conserva sus propios usuarios. No hay una contraseña compartida para los clientes: el flujo de compra solicita sus datos de contacto. Cambia los accesos de prueba si publicas una instancia accesible por Internet.
+
+## Machine Learning: ¿qué hace en la tienda?
+
+El **ML** aprende o calcula patrones a partir del historial y produce estimaciones evaluadas. Ayuda a planificar y revisar decisiones; no garantiza ventas, recompra ni fechas de agotamiento.
+
+### Cinco controles de negocio
+
+| Control | Función | Algoritmo / evaluación |
+|---|---|---|
+| **1. Ventas por producto** | Estimar ingresos de los próximos siete días por producto y contrastarlos con valores observados. | Random Forest regularizado frente a referencia semanal; MAE y RMSE sobre fechas reservadas. |
+| **2. Demanda e inventario** | Estimar unidades necesarias, riesgo de insuficiencia y reposición orientativa. | Random Forest y referencias temporales; MAE. La validación de alertas reales requiere stock histórico fiable. |
+| **3. Anomalías** | Señalar pedidos con importes o cantidades inusuales para revisión. | Isolation Forest. Precision, recall y F1 solo cuando existen etiquetas; el fixture sintético se identifica por separado. |
+| **4. Recomendaciones** | Sugerir productos por similitud textual e historial de compras conjuntas. | TF-IDF y coocurrencias; Precision@5 y Recall@5 en cestas reservadas frente a popularidad. |
+| **5. Clasificación** | Proponer categorías a partir del nombre y la descripción de los productos. | TF-IDF y regresión logística; accuracy, precision, recall y F1 macro con grupos de texto separados. |
+
+Las categorías propuestas requieren **revisión y confirmación humana**. El servidor comprueba que el producto no haya cambiado desde el entrenamiento y registra quién confirmó el cambio.
+
+Estos cinco controles son **funciones de negocio**. No deben confundirse con los cinco algoritmos disponibles para los pronósticos globales: **Ridge, Huber robusto, Random Forest, Extra Trees y Gradient Boosting**. «Automático» es un modo de selección y puede elegir una referencia estadística si obtiene menor error de validación.
+
+También se conservan segmentación de inventario con K-Means, segmentación RFM de clientes, probabilidad de recompra y riesgo de cancelación de pedidos.
+
+### Cómo interpretar los resultados
+
+- Se separan entrenamiento, validación y prueba cuando corresponde; la prueba reservada no se utiliza para elegir el modelo.
+- Los informes muestran fecha de publicación, corte de datos, métricas y limitaciones. Los pronósticos diarios usan días completos hasta ayer.
+- **Aprobado:** superó el criterio local documentado; no equivale a precisión garantizada.
+- **Fallido:** se evaluó, pero no superó el criterio. No significa que el botón o el panel estén averiados.
+- **No ejecutado:** faltan datos o etiquetas para completar esa validación; el componente operativo puede estar implementado.
+- La última evaluación documentada aprobó ventas por producto y clasificación sobre el catálogo académico. Demanda y recomendaciones no superaron sus referencias; anomalías sigue pendiente de etiquetas del negocio. Consulta la evidencia fechada para ver cifras y alcance.
+
+La prioridad inicial recomendada es **ventas por producto**, por su disponibilidad de datos y evaluación temporal directa. Demanda e inventario es la siguiente prioridad de desarrollo, completando trazabilidad de stock y validación de alertas.
+
+[Metodología, comparación y límites](docs/CONTROLES_ML_NEGOCIO.md) · [Tabla de resultados medidos](docs/evidencias/controles-negocio.md) · [Evidencia estructurada](docs/evidencias/controles-negocio.json).
+
+## LLM: ¿qué hace el asistente?
+
+El **LLM** permite conversar en lenguaje natural. El proyecto tiene integración configurable con **Gemini**, además de consultas locales de respaldo.
+
+- El administrador puede consultar productos, categorías, marcas, clientes, pedidos, ventas y resultados ML disponibles.
+- El asistente presenta fuentes, fechas y explica resultados; los totales y cálculos proceden de consultas controladas o informes publicados.
+- El chatbot del cliente orienta sobre productos y consultas de la tienda.
+- El LLM no recibe libre acceso a toda la base ni ejecuta SQL arbitrario. El asistente no modifica registros por conversación.
+- Su disponibilidad depende del proveedor, el modelo configurado, la clave y las cuotas. Las consultas locales no equivalen a una respuesta del LLM.
+
+Configura `GEMINI_API_KEY`, `GEMINI_ENABLED` y, opcionalmente, `GEMINI_MODEL`. El costo depende de la cuenta y las condiciones del proveedor. [Guía del asistente](docs/GEMINI.md).
+
+## Multiagentes: ¿qué automatizan?
+
+El sistema usa **cinco agentes de tareas**, un **coordinador** y un **auditor adicional**. Son componentes PHP con objetivos y mensajes definidos; no son cinco APIs ni cinco LLM independientes.
+
+| Componente | Responsabilidad |
+|---|---|
+| **Coordinador** | Ordenar la ejecución, compartir los resultados y conservar la traza del proceso. |
+| **1. Inventario** | Detectar productos activos agotados o con stock bajo de 0 a 5 unidades. |
+| **2. Seguimiento** | Detectar pedidos que siguen pendientes después del plazo configurado. |
+| **3. Proyección** | Consultar informes ML, comprobar vigencia e identificar riesgos estimados disponibles. |
+| **4. Análisis** | Combinar inventario, ventas y condiciones de reposición para priorizar acciones revisables. |
+| **5. Notificaciones** | Preparar avisos, detectar recuperación de stock y evitar duplicados. |
+| **Auditor** | Revisar consistencia, stock negativo y vigencia; bloquear envíos ante errores y advertir sobre calidad ML. |
+
+Los resultados e históricos de ejecución se conservan para revisión. Telegram puede recibir avisos de stock bajo, agotado, stock recuperado y reportes operativos según los eventos y la configuración. El envío requiere token, chat vinculado y autorización del auditor cuando interviene en el reporte.
+
+La tarea local revisa periódicamente; también existen acciones manuales. **No funciona con el equipo o MySQL apagados.** El entrenamiento diario y la actualización visual del dashboard son procesos distintos: refrescar el panel no reentrena el ML.
+
+[Arquitectura](docs/ARQUITECTURA.md) · [Dashboard y agentes](docs/DASHBOARD_AUTOMATICO.md) · [Centro de operaciones](docs/CENTRO_OPERACIONES.md).
+
+## Tecnologías y estructura
+
+| Tecnología | Uso |
+|---|---|
+| PHP 8.2, PDO y sesiones | Tienda, administración, autenticación, validaciones y consultas. |
+| MySQL / MariaDB | Datos de negocio, historial y seguimiento operativo. |
+| Python, pandas, NumPy, scikit-learn y joblib | Entrenamiento, evaluación y publicación de informes ML. |
+| HTML, CSS y JavaScript | Interfaz adaptable, filtros, gráficos y actualización de datos. |
+| Gemini / Telegram / Google Maps | Integraciones configurables de conversación, avisos y direcciones. |
+
+```text
+admin/       Administración, asistentes, ML, agentes y gestión
+config/      Conexión y configuración de integraciones
+includes/    Reglas de negocio, seguridad, consultas y vistas compartidas
+ml/          Modelos Python, evaluación y archivos generados
+css/ y js/   Estilos e interacción de la interfaz
+database/    SQL inicial y migraciones
+scripts/     Mantenimiento, automatización y pruebas PHP
+tests/       Pruebas Python
+docs/        Arquitectura, metodología y evidencias
+uploads/     Imágenes de productos y recursos de la tienda
+```
+
+## Instalación local con XAMPP
+
+1. Coloca el repositorio en `C:\xampp\htdocs\tienda_tecnologica`.
+2. Inicia Apache y MySQL. Las direcciones anteriores suponen Apache en el puerto 8080; adapta el puerto a tu instalación.
+3. Para una base nueva, crea `tienda_tecnologica` e importa `database/tienda_tecnologica.sql` desde phpMyAdmin. No importes encima de una base que quieras conservar.
+4. Copia `.env.example` como `.env` y configura únicamente las integraciones que utilizarás.
+5. Si actualizas una base existente, ejecuta la migración aditiva desde la raíz:
 
 ```powershell
 C:/xampp/php/php.exe scripts/actualizar_esquema.php
 ```
 
-La migración agrega los campos que falten en pedidos y conserva los datos de entrega históricos. Es repetible. Ya se aplicó en la base local durante esta revisión.
-
-## Configuración
-
-La conexión acepta `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` y `DB_PASSWORD` como variables de entorno. Los valores locales predeterminados son localhost, 3306, tienda_tecnologica, root y contraseña vacía. En producción utiliza un usuario propio de MySQL y contraseña.
-
-- `GOOGLE_MAPS_API_KEY`: opcional; se lee de `.env` o del entorno del servidor y activa el autocompletado de direcciones en el checkout. Configura las restricciones de dominio y API en Google Cloud. Sin clave, la dirección se ingresa manualmente.
-- `BCP_CUENTA`, `BCP_CCI`, `BCP_TITULAR`: datos de transferencia. Con `APP_DEMO=false`, la transferencia queda deshabilitada si no hay cuenta configurada.
-- `APP_DEMO`: configuración interna para la ejecución académica local (predeterminado: true). No añade avisos a la interfaz.
-
-La moneda de presentación es soles (S/). Los importes originales se conservaron, sin conversión de divisas. Yape/Plin y transferencias son métodos manuales: registrar un pedido no acredita un abono bancario.
-
-Para una instalación nueva, el usuario de ejemplo es `admin@tienda.com`, con contraseña inicial `password`, correspondiente al hash del SQL. Cámbiala antes de publicar. La base existente conserva sus propios usuarios.
-
-## Flujo de compra
-
-El carrito se guarda en sesión. El checkout valida datos y consulta precio, disponibilidad y stock bajo bloqueo. Si cambió el precio, pide revisar y confirmar el nuevo total. El pedido, sus detalles y la disminución de stock se guardan en una transacción.
-
-Un correo puede comprar varias veces; cada pedido conserva su propio nombre, correo, teléfono y dirección de entrega. Cancelar devuelve stock una vez; reactivar exige existencias suficientes. Para rastrear se solicita número de pedido y correo de compra. La página de confirmación requiere una sesión autorizada para ese pedido.
-
-## Machine Learning y analítica
-
-Los indicadores operativos se consultan directamente en MySQL/MariaDB. Los modelos Python producen informes evaluados que aparecen junto a esos indicadores:
-
-- **Inventario:** K-Means sobre precio y stock, con log1p, StandardScaler y selección de 2 a 5 grupos por Silhouette. Incluye reposición orientativa según ventas observadas.
-- **Clientes:** segmentación RFM (recencia, frecuencia y monto) con K-Means y perfiles de cada grupo.
-- **Pedidos y ventas:** Random Forest Regressor y Ridge frente a referencias semanales y mediana histórica. Se separan entrenamiento, validación y prueba temporal; se comparan MAE, RMSE y R². La prueba no se utiliza para elegir el modelo.
-- **Cancelaciones:** Random Forest Classifier entrenado solo con pedidos entregados o cancelados. La validación separa clientes entre entrenamiento y prueba. Reporta F1, exactitud balanceada, ROC AUC y Brier.
-
-Los pronósticos usan el último día completo como corte para evitar interpretar un día en curso como un día sin ventas. La fecha de entrenamiento y el corte aparecen en el panel. Las métricas corresponden al histórico disponible; una referencia estadística puede superar al ML y en ese caso se recomienda la referencia.
-
-Instala las dependencias en el Python que utiliza Apache:
+6. Instala las dependencias ML en el Python utilizado por el servidor y genera los informes:
 
 ```powershell
 python -m pip install -r ml/requirements.txt
 python ml/procesar_todas_predicciones.py
 ```
 
-Desde el administrador también puedes usar **Entrenar y actualizar**. La variable `PYTHON_BIN` permite seleccionar el ejecutable si Apache no encuentra el mismo Python que la terminal. Los resultados se guardan mediante reemplazo atómico en `ml/cache_todos_*.json`; los modelos se conservan en `ml/artefactos/`. Las rutas son relativas al proyecto y la conexión utiliza `DB_*`.
+También puedes entrenar desde **Configurar modelos ML → Guardar y entrenar ahora**. `PYTHON_BIN` permite indicar la ruta de Python si Apache no encuentra el mismo ejecutable que tu terminal. Los informes generados y artefactos excluidos de Git se regeneran al entrenar.
 
-### Histórico académico
+### Configuración del entorno
 
-Se agregó un lote de 270 días, de 2026-01-15 a 2026-10-11: 180 clientes y 5,640 pedidos. Los registros anteriores se conservaron. El generador representa crecimiento, fines de semana, fin de mes, preferencias de clientes y cancelaciones probabilísticas basadas en características del pedido.
+| Variable | Función |
+|---|---|
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Conexión a MySQL/MariaDB. |
+| `PYTHON_BIN` | Ejecutable Python para el entrenamiento. |
+| `GEMINI_API_KEY`, `GEMINI_ENABLED`, `GEMINI_MODEL` | Integración del LLM. |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Bot y destinatario de Telegram. |
+| `GOOGLE_MAPS_API_KEY` | Autocompletado de dirección, con APIs y restricciones de dominio configuradas. |
+| `PEDIDOS_DEMORA_MINUTOS` | Plazo para revisar pedidos pendientes; predeterminado en el agente: 5 minutos. |
 
-```powershell
-python ml/generar_historial.py
-```
+Los valores locales predeterminados de la conexión son `localhost`, puerto `3306`, base `tienda_tecnologica` y usuario `root` sin contraseña. Usa credenciales propias fuera de esa instalación local. `.env`, tokens y claves de servicios externos no se incluyen en el repositorio.
 
-La tabla `historial_lotes` registra la carga y evita duplicarla. Es una importación de operaciones históricas cerradas y no descuenta las existencias actuales. El generador utiliza una semilla fija y guarda su configuración; se documenta como conjunto académico y no como evidencia de ventas reales. Consulta [la metodología](docs/ML.md) para la sustentación.
+### Automatización local
 
-## Catálogo y administración
-
-Las categorías y marcas de los productos se normalizaron con respaldo. El generador de productos y los formularios administrativos respetan las reglas de `includes/catalogo.php`; por ejemplo, una laptop no se guarda como componente y los celulares del catálogo actual corresponden a marcas compatibles. Los respaldos se guardan en `database/respaldo_catalogo_*.json`.
-
-Productos, pedidos y clientes tienen búsqueda, filtros, paginación y exportación CSV. La ficha del cliente permite consultar sus pedidos. Las imágenes faltantes utilizan ilustraciones por categoría.
-
-## Comprobaciones
-
-```powershell
-C:/xampp/php/php.exe scripts/diagnostico.php
-C:/xampp/php/php.exe scripts/pruebas.php
-python -m unittest discover -s tests -p test_modelos.py
-```
-
-Las pruebas crean tablas temporales que ocultan las reales únicamente en la conexión de prueba. Comprueban compras repetidas, historial de entrega, stock, cancelaciones, precios cambiados, productos inactivos, CSV y analítica. No insertan compras en las tablas reales.
-
-## Despliegue
-
-El Dockerfile actual utiliza PHP 8.2 con Apache y PDO MySQL. Para entrenar desde un despliegue Docker también se debe instalar Python con `ml/requirements.txt` y configurar `PYTHON_BIN`; el entrenamiento desde la web fue comprobado en XAMPP local. Configura las variables de entorno y ejecuta la migración antes de desplegar el código actualizado sobre una base existente. Las carpetas de imágenes deben contar con almacenamiento persistente si tu proveedor utiliza un sistema de archivos efímero.
-
-Las credenciales de servicios externos se configuran mediante variables de entorno y no se incluyen en esta documentación.
-
-## Asistente del administrador
-
-Abre `http://localhost:8080/tienda_tecnologica/admin/asistente/index.php` o selecciona **Asistente** en el menú lateral. El chatbot incorpora una conexión opcional con **Gemini 3.1 Flash-Lite** y consultas locales de respaldo. Configura `GEMINI_API_KEY` en `.env` para habilitar conversación libre. Para coste cero, utiliza un proyecto Free Tier sin facturación habilitada. Consulta la [guía de activación y privacidad](docs/GEMINI.md).
-
-Las consultas locales permiten ver pedidos pendientes, estados, últimos pedidos, clientes, stock bajo y resultados ML. Gemini recibe un resumen limitado de estadísticas e informes ML y hasta tres intercambios de conversación. No ejecuta SQL ni modifica registros. Requiere sesión de administrador y CSRF. Cada respuesta identifica si fue generada por Gemini o por una consulta local y muestra su fuente y fecha.
-
-Pruebas de consultas locales (MySQL con tablas temporales):
+Para registrar la tarea de Windows de revisión periódica, ejecuta el instalador desde la raíz en PowerShell:
 
 ```powershell
-C:/xampp/php/php.exe scripts/pruebas_asistente.php
+powershell -ExecutionPolicy Bypass -File scripts/instalar_alertas_automaticas.ps1
 ```
 
-Pruebas de integración Gemini sin conexión externa ni claves reales (SQLite temporal y respuestas simuladas):
+El intervalo predeterminado es de 15 minutos. Requiere la sesión y los servicios indicados por el instalador. Comprueba la última ejecución y los errores en **Agentes y alertas**; registrar la tarea no prueba por sí solo que Telegram haya recibido mensajes.
+
+## Pruebas y evidencia
 
 ```powershell
-C:/xampp/php/php.exe scripts/pruebas_gemini.php
+python -m unittest discover -s tests
+C:/xampp/php/php.exe scripts/pruebas_control_ml.php
+C:/xampp/php/php.exe scripts/pruebas_controles_negocio.php
+C:/xampp/php/php.exe scripts/evidencia_controles_negocio.php
 ```
 
-# Centro de operaciones
+La última verificación documentada del trabajo de cinco controles registró **34 pruebas Python, 9 comprobaciones de confirmación de categorías y 18 del control ML existente**. Son comprobaciones de código; las métricas predictivas y sus estados se reportan por separado. Las pruebas de categorías usan SQLite temporal; las pruebas sintéticas no representan precisión comercial.
 
-En el administrador, **Centro de operaciones** reúne la comparación prospectiva
-de ventas/pedidos con los resultados reales y las acciones priorizadas del día.
-Pronósticos, observaciones y seguimientos se conservan en MySQL. La aplicación
-prepara las tablas automáticamente; también se incluye la migración aditiva
-`database/migraciones/20261019_centro_operaciones.sql`.
-Ver [funcionamiento y límites](docs/CENTRO_OPERACIONES.md).
+- [Salida de pruebas Python](docs/evidencias/pruebas-cinco-controles.txt).
+- [Pruebas de confirmación de categorías](docs/evidencias/pruebas-confirmacion-categorias.txt).
+- [Informe de cinco controles](docs/CONTROLES_ML_NEGOCIO.md).
+- [Predicciones individuales](docs/PREDICCIONES_INDIVIDUALES.md).
+- [Gestión de proveedores, movimientos y roles](docs/GESTION_AVANZADA.md).
+- [Requisitos y demostración académica](docs/REQUISITOS_INGENIERO.md).
 
-## Gestión de la tienda
+Desde el administrador, **Cinco controles ML → Informe técnico y criterios** permite consultar y descargar el informe. La evidencia exportada es una lectura fechada: regénérala después de entrenar si necesitas un informe actualizado.
 
-Nuevo apartado de administración con movimientos de inventario, proveedores,
-órdenes de reposición y recepciones parciales, devoluciones y registro de reembolsos
-externos, usuarios con roles y resumen diario de Telegram. Persiste en MySQL y
-conserva los accesos previos. [Guía de uso y límites](docs/GESTION_AVANZADA.md).
-Migración aditiva: `database/migraciones/20261019_gestion_avanzada.sql`.
+## Despliegue y límites
 
-Requisitos académicos, controles ML y auditor: [Guía de demostración](docs/REQUISITOS_INGENIERO.md).
+El repositorio incluye Dockerfile con PHP/Apache, extensiones MySQL, Python y dependencias ML. Un despliegue necesita base de datos externa y variables de entorno propias. La automatización de Windows no se traslada automáticamente al servidor: configura allí su programador de tareas. Un proveedor con almacenamiento efímero necesita persistencia para las imágenes y los informes que quieras conservar.
+
+El sistema es un apoyo a la gestión: las sugerencias de reposición, anomalías y pronósticos requieren revisión humana. No se presentan como certezas ni sustituyen comprobaciones de inventario, pagos o resultados reales.
