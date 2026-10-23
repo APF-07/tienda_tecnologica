@@ -1,0 +1,2 @@
+document.querySelectorAll('form[method="POST"]').forEach(form=>form.addEventListener('submit',()=>{if(!form.checkValidity())return;form.querySelectorAll('button[type="submit"],button:not([type])').forEach(b=>{b.disabled=true;b.dataset.original=b.textContent;b.textContent='Guardando…';});}));
+window.addEventListener('pageshow',()=>document.querySelectorAll('button[data-original]').forEach(b=>{b.disabled=false;b.textContent=b.dataset.original;}));

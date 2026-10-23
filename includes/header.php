@@ -13,7 +13,7 @@ $total_carrito_items = isset($_SESSION['carrito']) ? array_sum(array_column($_SE
     <title><?php echo isset($page_title) ? $page_title : 'TechStore - Tienda Virtual'; ?></title>
     <link rel="stylesheet" href="css/tienda.css">
     <?php if (isset($extra_css)) echo $extra_css; ?>
-<link rel="stylesheet" href="css/experiencia.css?v=20261014"><script src="js/experiencia.js?v=20261014" defer></script>
+<link rel="stylesheet" href="css/experiencia.css?v=20261020"><script src="js/experiencia.js?v=20261014" defer></script>
 </head>
 <body>
 

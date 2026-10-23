@@ -160,7 +160,7 @@ $total_carrito = isset($_SESSION['carrito']) ? array_sum(array_column($_SESSION[
         }
     </style>
 <link rel="stylesheet" href="css/mejoras.css">
-<link rel="stylesheet" href="css/experiencia.css?v=20261014"><script src="js/experiencia.js?v=20261014" defer></script>
+<link rel="stylesheet" href="css/experiencia.css?v=20261020"><script src="js/experiencia.js?v=20261014" defer></script>
 </head>
 <body>
 
@@ -211,7 +211,7 @@ $total_carrito = isset($_SESSION['carrito']) ? array_sum(array_column($_SESSION[
                     <input type="hidden" name="id_producto" value="<?php echo $producto['id_producto']; ?>">
                     <input type="hidden" name="accion" value="agregar">
                     <input type="number" name="cantidad" value="1" min="1" max="<?php echo $producto['stock']; ?>">
-                    <button type="submit" class="btn-add-cart">Agregar al Carrito</button>
+                    <button type="submit" class="btn-add-cart">Agregar al carrito</button>
                 </form>
             <?php else: ?>
                 <p style="color: #e74c3c; font-weight: 600;">Este producto no se encuentra disponible para la compra en este momento.</p>
@@ -220,5 +220,7 @@ $total_carrito = isset($_SESSION['carrito']) ? array_sum(array_column($_SESSION[
 
     </div>
 
+<?php require __DIR__.'/includes/recomendaciones_producto.php'; ?>
+<style>.related-ml{max-width:1200px;margin:35px auto;padding:24px}.related-ml-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}.related-ml-grid a{display:grid;gap:16px;padding:22px;border:1px solid #607b9240;border-radius:18px;color:inherit;text-decoration:none;background:#66899d0c}.related-ml-grid span{color:#168ca7;font-weight:700}.related-ml-grid small{font-size:12px}</style>
 </body>
 </html>

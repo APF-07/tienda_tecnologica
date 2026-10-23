@@ -1,113 +1,55 @@
-# Arquitectura de TechStore
+# Arquitectura de TechStore · versión local
 
-## Vista general del despliegue
+Actualizada el 16/10/2026. Detalle: [Dashboard automático](DASHBOARD_AUTOMATICO.md).
 
 ```mermaid
 flowchart TB
-    Cliente[Cliente: catálogo, carrito y checkout]
-    Admin[Administrador: productos, pedidos y analítica]
-    subgraph Render[Render: contenedor Docker]
-        PHP[Apache + PHP: sesiones, permisos, validación y compras]
-        Chat[Asistentes: consultas locales y contexto para Gemini]
-        Python[Python: entrenamiento y evaluación ML]
-        Reportes[Informes JSON y modelos locales]
-        Agentes[Coordinador de agentes]
-        Guardado[Aviso inmediato después de guardar stock]
-        Estado[Archivos de estado y control de envíos]
-    end
-    DB[(Clever Cloud: MySQL)]
-    Gemini[API Gemini: LLM]
-    Telegram[Bot Telegram: chat autorizado]
-    Maps[Google Maps: lugar y coordenadas]
-    Cliente --> PHP
-    Admin --> PHP
-    PHP <--> DB
-    PHP --> Chat
-    Chat -->|Consultas SQL parametrizadas| DB
-    Chat -->|Contexto limitado| Gemini
-    Admin -->|Entrenar desde analítica| Python
-    Python -->|Instantánea de datos| DB
-    Python --> Reportes
-    Reportes --> PHP
-    PHP -->|Revisión manual| Agentes
-    Agentes --> DB
-    Agentes --> Estado
-    PHP -->|Editar producto: después del commit| Guardado
-    Guardado --> Estado
-    Guardado --> Telegram
-    Agentes -->|Envío solicitado| Telegram
-    Cliente -->|Selecciona dirección| Maps
-    Maps -->|Coordenadas y place ID del destino| PHP
+    Usuario[Cliente o administrador] --> PHP[Apache y PHP en XAMPP]
+    PHP <--> DB[(MySQL local)]
+    Dashboard[Dashboard: lectura cada 30 segundos] --> PHP
+    Dashboard -->|POST autenticado cada 60 segundos| C[Coordinador]
+    Tarea[Tarea local de Windows] --> C
+    C --> I[1. Inventario]
+    C --> S[2. Seguimiento de pedidos]
+    C --> P[3. Proyección de demanda]
+    I --> A[4. Análisis y recomendaciones]
+    S --> A
+    P --> A
+    A --> N[5. Notificaciones]
+    I --> DB
+    S --> DB
+    P --> Informes[Informes ML con métricas y fechas]
+    N --> Cola[Cola común y ejecuciones en MySQL]
+    PHP -->|Compra o cambio de stock confirmado| Cola
+    Cola --> Telegram[Bot Telegram del administrador]
+    Entrenar[Entrenamiento Python separado] --> DB
+    Entrenar --> Informes
+    P --> Historial[Pronósticos futuros archivados y evaluación posterior]
+    Historial --> DB
+    PHP --> Chat[Asistente: consulta local y contexto limitado]
+    Chat --> DB
+    Chat --> Gemini[Gemini LLM: explicación conversacional]
+    Chat -->|Prioridades y vigencia| C
+    PHP --> Maps[Google Maps: selección de destino]
 ```
 
-La aplicación contiene PHP y Python; MySQL es un servicio separado. Las claves
-se configuran en variables del servidor. La clave de Maps usada en el navegador
-debe restringirse por dominio y API. Las claves Gemini y Telegram permanecen
-del lado del servidor.
+Los cinco agentes tienen reglas y entradas concretas. Gemini explica resultados,
+no modifica registros ni sustituye las predicciones de los modelos. El gráfico
+representa dependencias; preguntar al asistente no ejecuta el coordinador: lee
+su último resultado y advierte si está desactualizado.
 
-## Coordinación de agentes y aviso inmediato
+La aplicación registra la transición de stock y la alerta en la transacción de
+compra/edición; el envío externo se intenta después del commit. Las revisiones
+usan el mismo registro para no repetir esa transición.
 
-```mermaid
-sequenceDiagram
-    actor Admin as Administrador
-    participant PHP as Aplicación PHP
-    participant DB as MySQL
-    participant C as Coordinador
-    participant I as Agente Inventario
-    participant A as Agente Análisis
-    participant N as Agente Notificaciones
-    participant T as Telegram
-    alt Revisión de agentes
-        Admin->>PHP: Ejecutar revisión
-        PHP->>C: Iniciar flujo
-        C->>I: Solicitar inventario
-        I->>DB: Productos activos con stock de 0 a 5
-        I-->>C: Hallazgos
-        C->>A: Hallazgos y periodo de ventas
-        A->>DB: Ventas confirmadas de 30 días
-        A-->>C: Prioridad, cobertura y reposición sugerida
-        C->>N: Hallazgos y estado anterior
-        N-->>C: Alertas nuevas y recuperaciones
-        C-->>PHP: Resultado y traza
-        opt Revisión con envío
-            PHP->>T: Avisos pendientes con control de duplicados
-        end
-    else Cambio desde Editar producto
-        Admin->>PHP: Guardar nuevo stock
-        PHP->>DB: Bloquear fila, actualizar y confirmar transacción
-        DB-->>PHP: Guardado confirmado y stock anterior
-        PHP->>PHP: Comparar stock anterior y actual
-        opt Cambio relevante de producto activo
-            PHP->>T: Aviso inmediato de stock bajo o recuperado
-        end
-        PHP-->>Admin: Confirmación de guardado y resultado de Telegram
-    end
-```
+MySQL conserva ejecuciones, avisos y seguimiento de pronósticos. Los modelos y
+los informes JSON siguen en disco local. No hay entrenamiento automático al
+refrescar. El panel deja de solicitar agentes si se oculta o se cierra; la tarea
+Windows opera por separado mientras el equipo y MySQL estén disponibles.
 
-Son agentes especializados con reglas deterministas y mensajes estructurados.
-No utilizan Gemini para decidir prioridades ni realizan compras autónomas.
-El aviso inmediato de Editar producto es un camino adicional: no ejecuta todo
-el coordinador ni calcula la recomendación completa sobre ventas históricas.
-Solo se intenta después de guardar; un fallo del proveedor no revierte el stock.
+El proveedor puede fallar. Los rechazos permiten reintentos con espera; un timeout
+incierto requiere revisión para no duplicar una entrega posiblemente aceptada.
+No se promete entrega exactamente una vez. Las claves permanecen en el servidor,
+excepto la clave Maps para navegador, que debe restringirse por dominio y API.
 
-## Diferencia entre ML, LLM y agentes
-
-| Componente | Fuente y método | Resultado | Límite |
-| --- | --- | --- | --- |
-| ML | Datos de productos, clientes, pedidos y detalles; K-Means, clasificación y pronósticos temporales | Segmentos, riesgo de cancelación y proyecciones con métricas | Las métricas corresponden al conjunto académico; no garantizan resultados futuros |
-| LLM | Gemini con contexto limitado y consultas locales exactas | Respuestas conversacionales | Depende de disponibilidad y cuota; una respuesta local no acredita una llamada a Gemini |
-| Agentes | Stock y ventas históricas, reglas y coordinador | Prioridad, reposición sugerida y avisos | Cobertura histórica no equivale a una predicción ML de agotamiento |
-
-## Persistencia y automatización pendientes en Render Free
-
-- MySQL conserva los datos de negocio en Clever Cloud.
-- Los archivos nuevos de uploads, informes ML, sesiones e historial de alertas
-  están en el contenedor y pueden perderse con reinicios o nuevos despliegues.
-- La tarea de Windows cada 15 minutos pertenece a la computadora local. No
-  representa una tarea programada dentro de Render.
-- El guardado de stock desde el administrador sí intenta el aviso inmediatamente.
-  Cambiar MySQL con phpMyAdmin no ejecuta ese código PHP.
-- El control de envíos usa archivos: no garantiza entrega exactamente una vez
-  entre reinicios ni reintentos automáticos durables. Esas mejoras están pendientes.
-
-Detalle de modelos: [ML.md](ML.md). Evidencias: [EVIDENCIAS_PRUEBAS.md](EVIDENCIAS_PRUEBAS.md).
+[Evidencias de pruebas](EVIDENCIAS_PRUEBAS.md).

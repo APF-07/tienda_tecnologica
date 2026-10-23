@@ -14,7 +14,7 @@ import sklearn
 from sklearn.cluster import KMeans
 from sklearn.compose import ColumnTransformer, TransformedTargetRegressor
 from sklearn.dummy import DummyClassifier
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, GradientBoostingRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import Ridge, HuberRegressor
 from sklearn.metrics import (balanced_accuracy_score, brier_score_loss, f1_score, precision_score, recall_score,
@@ -23,6 +23,8 @@ from sklearn.metrics import (balanced_accuracy_score, brier_score_loss, f1_score
 from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from predicciones_individuales import modelo_recompra, modelo_demanda_productos
+from diagnostico_pronostico import diagnosticar_pronostico
 
 RAIZ = Path(__file__).resolve().parent
 SEMILLA = 42
@@ -225,7 +227,7 @@ def modelo_pronostico(tablas, hoy, ventas=False):
     pedidos = pedidos[pedidos['estado'].isin(estados) & (pedidos['fecha_pedido'] < hoy + pd.Timedelta(days=1))]
     nombre = 'Pronóstico de ventas' if ventas else 'Pronóstico de volumen de pedidos'
     unidad = 'S/' if ventas else 'pedidos'
-    modelo = {'nombre': nombre, 'algoritmo': 'Random Forest, Ridge, Huber y referencias estadísticas',
+    modelo = {'nombre': nombre, 'algoritmo': 'Ridge, Huber, Random Forest, Extra Trees y Gradient Boosting; referencias estadísticas',
         'estado': 'insuficiente', 'descripcion': 'Selecciona el modelo en una validación temporal y lo evalúa después en fechas reservadas. La prueba final no se usa para elegir el modelo.',
         'metricas': {}, 'graficos': [], 'tablas': [], 'metodologia': ['Serie diaria completa, incluidos días sin pedidos.',
             'Variables: valores de ayer y hace 7 días, media previa de 7 días, día de semana y tendencia.',
@@ -251,15 +253,27 @@ def modelo_pronostico(tablas, hoy, ventas=False):
     candidatos = {'Ridge': make_pipeline(StandardScaler(),Ridge(alpha=10)),
                   'Random Forest': RandomForestRegressor(n_estimators=200,max_depth=5,min_samples_leaf=2,random_state=SEMILLA,n_jobs=1),
                   'Huber robusto':TransformedTargetRegressor(regressor=make_pipeline(StandardScaler(),HuberRegressor(max_iter=1000)),transformer=StandardScaler()),
-                  'Random Forest log':TransformedTargetRegressor(regressor=RandomForestRegressor(n_estimators=200,max_depth=5,min_samples_leaf=2,random_state=SEMILLA,n_jobs=1),func=np.log1p,inverse_func=np.expm1)}
+                  'Extra Trees':ExtraTreesRegressor(n_estimators=100,max_depth=5,min_samples_leaf=2,random_state=SEMILLA,n_jobs=1),
+                  'Gradient Boosting':GradientBoostingRegressor(n_estimators=80,max_depth=2,learning_rate=.05,loss='huber',random_state=SEMILLA)}
     nombres = list(candidatos) + ['Referencia semanal','Mediana histórica','Mediana por día de semana']
     seleccion, comparacion, predicciones, ventanas_test = {}, {}, {}, {}
     for nombre_modelo in nombres:
         estimador = candidatos.get(nombre_modelo)
         pred_val, _ = evaluar_bloques(serie, validacion.index, nombre_modelo, estimador, columnas)
         seleccion[nombre_modelo] = evaluar_regresion(validacion['objetivo'], pred_val)
-    simplicidad = {'Mediana histórica':0,'Referencia semanal':1,'Mediana por día de semana':2,'Ridge':3,'Huber robusto':4,'Random Forest':5,'Random Forest log':6}
+    simplicidad = {'Mediana histórica':0,'Referencia semanal':1,'Mediana por día de semana':2,'Ridge':3,'Huber robusto':4,'Random Forest':5,'Extra Trees':6,'Gradient Boosting':7}
     elegido = min(seleccion,key=lambda clave: (seleccion[clave]['mae'],simplicidad[clave]))
+    recomendado = elegido
+    solicitado = os.getenv('ML_MODELO_VENTAS' if ventas else 'ML_MODELO_PEDIDOS', 'automatico')
+    if solicitado != 'automatico':
+        if solicitado not in candidatos:
+            raise ValueError('Modelo manual no permitido: '+solicitado)
+        elegido = solicitado
+    modelo['control'] = {'modo':'Automático' if solicitado=='automatico' else 'Manual',
+        'recomendado':recomendado,'utilizado':elegido,'familias_ml':5,'candidatos':len(nombres),
+        'motivo':('Menor MAE en validación temporal; en empate se prefiere el método más simple.' if solicitado=='automatico'
+            else 'Selección explícita del administrador. La recomendación automática se conserva para comparar.'),
+        'mae_validacion_elegido':seleccion[elegido]['mae'],'mae_validacion_recomendado':seleccion[recomendado]['mae']}
     mejor_ml = min(candidatos,key=lambda clave: seleccion[clave]['mae'])
     # El modelo se elige antes de consultar los resultados del bloque de prueba.
     for nombre_modelo in nombres:
@@ -268,13 +282,19 @@ def modelo_pronostico(tablas, hoy, ventas=False):
         predicciones[nombre_modelo] = pred
         ventanas_test[nombre_modelo] = ventanas
     evaluacion = comparacion[elegido]
+    referencia = comparacion['Referencia semanal']['mae']
+    modelo['decision'] = {'supera_referencia_prueba':evaluacion['mae']<referencia,
+        'mejora_mae_porcentaje':round((referencia-evaluacion['mae'])/referencia*100,1) if referencia>0 else None,
+        'uso':'Orientar turnos, capacidad de despacho y presupuesto; confirmar con resultados reales antes de comprometer recursos.',
+        'advertencia':('No mejora la referencia semanal en la prueba reservada. Evita usar este pronóstico como única base de una decisión.' if evaluacion['mae']>=referencia else
+            'Superó la referencia semanal en la prueba histórica; esto no garantiza el resultado futuro.')}
     modelo['estado']='listo'
     modelo['calidad'] = {
         'porcentaje': evaluacion['dentro_20'], 'titulo':'Días dentro del margen de ±20%',
         'dias': len(test), 'ventanas':len(ventanas_test[elegido]),
         'aciertos':int(np.sum(np.abs(test['objetivo'].to_numpy()-predicciones[elegido]) <= np.abs(test['objetivo'].to_numpy())*.20)),
         'explicacion':'Porcentaje de días de prueba cuya estimación quedó a ±20% del valor observado. Cuando el valor real es cero, solo cuenta una predicción de cero. No es la probabilidad de acertar una predicción futura.'}
-    modelo['metricas'].update({'Modelo recomendado': elegido, 'Mejor modelo ML': mejor_ml,
+    modelo['metricas'].update({'Modelo recomendado': elegido, 'Recomendación automática':recomendado, 'Mejor modelo ML': mejor_ml,
         'Días de entrenamiento inicial': len(ajuste), 'Días de validación':len(validacion), 'Días de prueba': len(test),
         'Ventanas de prueba':len(ventanas_test[elegido]),
         'MAE de prueba': evaluacion['mae'], 'RMSE de prueba': evaluacion['rmse'],
@@ -288,6 +308,15 @@ def modelo_pronostico(tablas, hoy, ventas=False):
          'filas':[[v['inicio'],v['fin'],v['mae'],v['dentro_20']] for v in ventanas_test[elegido]]}]
     modelo['tablas'].append({'titulo':'Días con mayor valor observado · historial conservado',
         'columnas':['Fecha',unidad], 'filas':[[str(fecha.date()),round(float(valor),2)] for fecha,valor in serie.nlargest(3).items()]})
+    modelo['diagnosticos'] = {
+        clave: diagnosticar_pronostico(test['objetivo'], predicciones[clave], predicciones['Referencia semanal'])
+        for clave in nombres
+    }
+    modelo['tablas'].append({'titulo':'Sesgo y utilidad frente a la referencia semanal · prueba reservada',
+        'columnas':['Modelo','Sesgo agregado (%)','Mejora del error frente a referencia (%)','Tendencia del error','Supera referencia'],
+        'filas':[[clave, d['sesgo_porcentaje'], d['mejora_referencia_porcentaje'], d['direccion'], 'Sí' if d['supera_referencia'] else 'No']
+                 for clave, d in modelo['diagnosticos'].items()]})
+    modelo['metodologia'].append('Sesgo positivo: sobreestimación agregada; negativo: subestimación. Puede ocultar errores que se compensan. La mejora frente a referencia utiliza las mismas fechas de prueba y no interviene en la selección del modelo.')
     estimador = candidatos.get(elegido)
     for candidato in candidatos.values():
         candidato.fit(frame[columnas],frame['objetivo'])
@@ -303,9 +332,11 @@ def modelo_pronostico(tablas, hoy, ventas=False):
         modelo['metodologia'].append('La referencia estadística fue preferida en validación y se utiliza para el pronóstico; en empate se favorece el método más simple.')
     modelo['metodologia'].append('Evaluación recursiva en ventanas de hasta 7 días: al iniciar cada ventana se reajusta usando solo datos anteriores. No se introducen valores reales de esa ventana en sus rezagos.')
     modelo['metodologia'].extend(['Mediana por día de semana: referencia robusta que conserva el patrón semanal sin eliminar registros.', 'WAPE = suma de errores absolutos / suma de valores reales × 100; un valor menor es mejor y puede superar 100%.', 'El porcentaje de días dentro de ±20% es una medida histórica con tolerancia explícita, no precisión universal.'])
-    modelo['metodologia'].append('Huber robusto estandariza entradas y objetivo, penalizando menos los errores extremos. Random Forest log utiliza log1p y expm1 sobre el objetivo. Ninguna variante elimina registros.')
+    modelo['metodologia'].append('Huber robusto estandariza entradas y objetivo, penalizando menos los errores extremos. No se eliminan registros por ser extremos.')
     if (serie>0).sum()<14:
         modelo['metodologia'].append('El historial tiene pocos días con actividad; conviene ampliar la serie para evaluar estabilidad.')
+    modelo['graficos'].append(grafico('Comparación de modelos · MAE de validación (menor es mejor)','bar',list(seleccion),[v['mae'] for v in seleccion.values()]))
+    modelo['metodologia'].append('Se comparan cinco modelos ML (Ridge, Huber, Random Forest, Extra Trees y Gradient Boosting) y tres referencias estadísticas, que no se cuentan como ML. Automático puede preferir una referencia si obtiene menor error; el modo manual permite elegir entre los cinco ML y no oculta una referencia mejor. La verificación prospectiva se consulta en Predicción frente a realidad.')
     joblib.dump({'modelo':estimador,'modelos_ml':candidatos,'nombre':elegido,'columnas':columnas,'metricas':comparacion,'seleccion':seleccion,'fecha_corte':str(hoy.date())},RAIZ/'artefactos'/('ventas.joblib' if ventas else 'pedidos.joblib'))
     return modelo
 
@@ -321,7 +352,7 @@ def modelo_cancelacion(tablas):
     numeric=['total','unidades','dia_semana','hora']; categoricas=['metodo_pago']; columnas=numeric+categoricas
     cerrados=pedidos[pedidos['estado'].isin(['Entregado','Cancelado'])].copy()
     y=(cerrados['estado']=='Cancelado').astype(int)
-    modelo={'nombre':'Riesgo de cancelación de pedidos','algoritmo':'Random Forest Classifier', 'estado':'insuficiente',
+    modelo={'tipo_modelo':'cancelacion','predicciones':{},'nombre':'Riesgo de cancelación de pedidos','algoritmo':'Random Forest Classifier', 'estado':'insuficiente',
         'descripcion':'Aprende de pedidos entregados y cancelados. Puntúa los pendientes usando importe, unidades, método de pago y fecha de creación.',
         'metricas':{'Pedidos con resultado conocido':len(cerrados)},'graficos':[],'tablas':[],
         'metodologia':['Los pedidos pendientes o en proceso no se usan como etiquetas de entrenamiento.',
@@ -366,6 +397,7 @@ def modelo_cancelacion(tablas):
     pendientes=pedidos[pedidos['estado']=='Pendiente'].copy()
     if not pendientes.empty:
         pendientes['riesgo']=pipeline.predict_proba(pendientes[columnas])[:,1]
+        modelo['predicciones']={str(int(r['id_pedido'])):{'id_pedido':int(r['id_pedido']),'probabilidad_cancelacion':round(float(r['riesgo'])*100,1)} for _,r in pendientes.iterrows()}
         top=pendientes.sort_values('riesgo',ascending=False).head(10)
         modelo['tablas'].append({'titulo':'Pedidos pendientes con mayor puntuación estimada','columnas':['Pedido','Importe (S/)','Unidades','Puntuación (%)'],
             'filas':[[int(r['id_pedido']),round(float(r['total']),2),int(r['unidades']),round(float(r['riesgo'])*100,1)] for _,r in top.iterrows()]})
@@ -377,13 +409,15 @@ def entrenar(tipos=None):
     os.environ.setdefault('OMP_NUM_THREADS','1')
     tipos=tipos or ['productos','clientes','ventas','pedidos']
     (RAIZ/'artefactos').mkdir(exist_ok=True)
+    print('Leyendo instantánea de MySQL...',flush=True)
     tablas,hoy,generado,firma=leer_datos()
-    constructores={'productos':lambda:modelo_productos(tablas,hoy),
-        'clientes':lambda:modelo_clientes(tablas,hoy),
+    constructores={'productos':lambda:modelo_productos(tablas,hoy)+[modelo_demanda_productos(tablas,hoy)],
+        'clientes':lambda:modelo_clientes(tablas,hoy)+[modelo_recompra(tablas,hoy)],
         'ventas':lambda:[modelo_pronostico(tablas,hoy,True)],
         'pedidos':lambda:[modelo_pronostico(tablas,hoy),modelo_cancelacion(tablas)]}
     informes=[]
     for tipo in tipos:
+        print(tipo+': calculando modelos y evaluación...',flush=True)
         resultado={'schema_version':2,'tipo':tipo,'generado':generado,'fecha_corte':str(hoy.date()),'datos_id':firma,'moneda':'PEN',
             'versiones':{'scikit_learn':sklearn.__version__,'pandas':pd.__version__,'numpy':np.__version__},
             'conteos':{nombre:len(df) for nombre,df in tablas.items()},'modelos':constructores[tipo]()}

@@ -30,8 +30,8 @@ $productos = $lista['filas'];
         .alert-error { background: #fde8e8; color: #c0392b; padding: 10px 15px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
     </style>
 <link rel="stylesheet" href="../../css/admin-mejoras.css?v=20261013-menu">
-<link rel="stylesheet" href="../../css/experiencia.css?v=20261014"><script src="../../js/experiencia.js?v=20261014" defer></script>
-<link rel="stylesheet" href="../../css/admin-experiencia.css?v=1"><script src="../../js/admin-experiencia.js?v=1" defer></script>
+<link rel="stylesheet" href="../../css/experiencia.css?v=20261020"><script src="../../js/experiencia.js?v=20261014" defer></script>
+<link rel="stylesheet" href="../../css/admin-experiencia.css?v=20261020"><script src="../../js/admin-experiencia.js?v=20261020" defer></script>
 </head>
 <body>
 
@@ -51,7 +51,7 @@ $productos = $lista['filas'];
                 <div class="alert-error"><?php echo htmlspecialchars($error); ?></div>
             <?php endif; ?>
 
-            <div class="admin-toolbar"><a href="agregar.php" class="btn-add">+ Nuevo producto</a><a class="btn-action" href="exportar.php?<?php echo e(http_build_query(array_intersect_key($_GET,array_flip(['q','estado','orden','stock','marca','categoria'])))); ?>">Descargar CSV</a></div><?php render_filtros_admin('productos',$lista); ?>
+            <div class="admin-toolbar"><a href="agregar.php" class="btn-add">+ Nuevo producto</a><a class="btn-action" href="exportar.php?<?php echo e(http_build_query(array_intersect_key($_GET,array_flip(['q','estado','orden','stock','marca','categoria'])))); ?>">Exportar productos (CSV)</a></div><?php render_filtros_admin('productos',$lista); ?>
 
             <table>
                 <thead>
@@ -96,8 +96,8 @@ $productos = $lista['filas'];
                                     <?php endif; ?>
                                 </td>
                                 <td>
-                                    <a href="editar.php?id=<?php echo $prod['id_producto']; ?>" class="btn-action btn-edit">Editar</a>
-                                    <form action="eliminar.php" method="POST" class="inline-action" onsubmit="return confirm('¿Eliminar este registro?');"><?php echo csrf_campo(); ?><input type="hidden" name="id" value="<?php echo $prod['id_producto']; ?>"><button type="submit" class="btn-action btn-delete">Eliminar</button></form>
+                                    <a href="editar.php?id=<?php echo $prod['id_producto']; ?>" class="btn-action btn-edit" aria-label="Editar producto <?= e($prod['nombre']) ?>">Editar producto</a>
+                                    <form action="eliminar.php" method="POST" class="inline-action" onsubmit="return confirm('¿Eliminar esta ficha de producto? Esta acción puede rechazarse si tiene registros relacionados.');"><?php echo csrf_campo(); ?><input type="hidden" name="id" value="<?php echo $prod['id_producto']; ?>"><button type="submit" class="btn-action btn-delete" aria-label="Eliminar producto <?= e($prod['nombre']) ?>">Eliminar</button></form>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

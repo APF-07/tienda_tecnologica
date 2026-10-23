@@ -154,7 +154,7 @@ $total_carrito_items = array_sum(array_column($_SESSION['carrito'], 'cantidad'))
         }
     </style>
 <link rel="stylesheet" href="css/mejoras.css">
-<link rel="stylesheet" href="css/experiencia.css?v=20261014"><script src="js/experiencia.js?v=20261014" defer></script>
+<link rel="stylesheet" href="css/experiencia.css?v=20261020"><script src="js/experiencia.js?v=20261014" defer></script>
 </head>
 <body>
 

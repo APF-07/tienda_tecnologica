@@ -1,7 +1,11 @@
 <?php
 require_once __DIR__.'/telegram.php';
 // Se llama únicamente después de confirmar la transacción del producto.
-function notificar_stock_guardado(int $id,array $anterior,array $actual,?callable $api=null,?array $config=null,?string $archivo=null): string {
+function notificar_stock_guardado(int $id,array $anterior,array $actual,?callable $api=null,?array $config=null,?string $archivo=null,?PDO $db=null): string {
+    if($db!==null){
+        try{require_once __DIR__.'/registro_agentes.php';preparar_registro_agentes($db);registrar_transicion_stock($db,['id_producto'=>$id]+$actual,(int)$anterior['stock']);$envio=enviar_alertas_operativas($db,$api,$config,1);return 'Producto guardado. Telegram: '.$envio['estado'].'.';}
+        catch(Throwable $e){error_log('Producto guardado; revisar alertas MySQL.');return 'Producto guardado. No se pudo completar el aviso; revisa Agentes y alertas.';}
+    }
     $antes=(int)$anterior['stock'];$ahora=(int)$actual['stock'];
     if((int)$actual['estado']!==1||($antes===$ahora&&(int)$anterior['estado']===1))return '';
     $recuperado=(int)$anterior['estado']===1&&$antes<=5&&$ahora>5;

@@ -21,7 +21,7 @@ $total_carrito = isset($_SESSION['carrito']) ? array_sum(array_column($_SESSION[
     <title>Tienda Virtual - TechStore</title>
     <link rel="stylesheet" href="css/tienda.css">
 <link rel="stylesheet" href="css/mejoras.css">
-<link rel="stylesheet" href="css/experiencia.css?v=20261014"><script src="js/experiencia.js?v=20261014" defer></script>
+<link rel="stylesheet" href="css/experiencia.css?v=20261020"><script src="js/experiencia.js?v=20261014" defer></script>
 <link rel="stylesheet" href="css/catalogo-nuevo.css?v=1"><script src="js/catalogo.js?v=1" defer></script>
 </head>
 <body class="catalog-page">
@@ -30,7 +30,7 @@ $total_carrito = isset($_SESSION['carrito']) ? array_sum(array_column($_SESSION[
     <?php render_store_header('tienda.php'); ?>
 
     <section class="catalog-intro">
-        <div><span class="eyebrow">TU ESPACIO PARA EXPLORAR TECNOLOGÍA</span><h1>Buenas ideas.<br><span>Mejores equipos.</span></h1><p>Para estudiar, crear o jugar. Encuentra la tecnología que va contigo.</p><a class="catalog-hero-link" href="#catalogo">Explorar productos <span aria-hidden="true">↗</span></a><div class="catalog-hero-tags"><span>Precios en soles</span><span>Asistente de compras con IA</span></div></div>
+        <div><span class="eyebrow">TU ESPACIO PARA EXPLORAR TECNOLOGÍA</span><h1>Buenas ideas.<br><span>Mejores equipos.</span></h1><p>Para estudiar, crear o jugar. Encuentra la tecnología que va contigo.</p><a class="catalog-hero-link" href="#catalogo">Explorar productos <span aria-hidden="true">↗</span></a></div>
         <img class="intro-illustration" src="uploads/ilustraciones/hero.svg" alt="Laptop y smartphone de TechStore">
     </section>
     <!-- CONTENEDOR GENERAL -->
@@ -76,7 +76,7 @@ $total_carrito = isset($_SESSION['carrito']) ? array_sum(array_column($_SESSION[
                     <label class="sr-only" for="input-busqueda">Buscar productos</label><input type="search" id="input-busqueda" placeholder="Busca tu próximo equipo…">
                 </div>
             </div>
-            <div class="catalog-controls"><div class="catalog-order"><label for="orden-catalogo">Ordenar por</label><select id="orden-catalogo"><option value="recientes">Más recientes</option><option value="precio_asc">Menor precio</option><option value="precio_desc">Mayor precio</option><option value="nombre">Nombre A–Z</option></select></div><label class="catalog-availability"><input type="checkbox" id="solo-disponibles"> Solo disponibles</label><button type="button" id="limpiar-filtros">Limpiar filtros</button></div>
+            <div class="catalog-controls"><div class="catalog-order"><label for="orden-catalogo">Ordenar por</label><select id="orden-catalogo"><option value="recientes">Más recientes</option><option value="precio_asc">Menor precio</option><option value="precio_desc">Mayor precio</option><option value="nombre">Nombre A–Z</option></select></div><label class="catalog-availability"><input type="checkbox" id="solo-disponibles"> Solo disponibles</label><button type="button" id="limpiar-filtros">Restablecer filtros</button></div>
             <div class="catalog-selection" id="seleccion-catalogo" aria-live="polite"></div>
             <p class="catalog-result-count" id="resumen-catalogo" role="status">Preparando tu catálogo…</p>
 

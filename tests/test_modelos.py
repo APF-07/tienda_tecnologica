@@ -1,6 +1,8 @@
 import sys
 import tempfile
 import unittest
+import os
+from unittest.mock import patch
 from pathlib import Path
 
 import numpy as np
@@ -42,6 +44,21 @@ class ModelosTest(unittest.TestCase):
         resultado = modelos.modelo_pronostico(self.tablas(10),self.hoy)
         self.assertEqual(resultado['estado'],'insuficiente')
         self.assertEqual(resultado['graficos'],[])
+
+    def test_cinco_familias_y_control_manual_evaluado(self):
+        with patch.dict(os.environ, {'ML_MODELO_VENTAS':'Extra Trees'}):
+            resultado = modelos.modelo_pronostico(self.tablas(),self.hoy,True)
+        self.assertEqual(resultado['control']['familias_ml'],5)
+        self.assertEqual(resultado['control']['candidatos'],8)
+        self.assertEqual(resultado['control']['utilizado'],'Extra Trees')
+        self.assertEqual(resultado['control']['modo'],'Manual')
+        tabla = resultado['tablas'][1]
+        nombres = [fila[0] for fila in tabla['filas']]
+        for nombre in ['Ridge','Huber robusto','Random Forest','Extra Trees','Gradient Boosting']:
+            self.assertIn(nombre,nombres)
+        artefacto = modelos.joblib.load(modelos.RAIZ/'artefactos'/'ventas.joblib')
+        self.assertEqual(artefacto['nombre'],'Extra Trees')
+        self.assertTrue(all(np.isfinite(fila[1]) for fila in tabla['filas']))
 
     def test_pronostico_evalua_fechas_y_no_da_negativos(self):
         resultado = modelos.modelo_pronostico(self.tablas(),self.hoy,True)

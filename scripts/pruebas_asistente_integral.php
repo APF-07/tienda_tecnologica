@@ -35,4 +35,6 @@ $r=responder_asistente($db,'De la marca Marca Nueva');$check(str_contains($r['te
 $r=responder_asistente($db,'De la categoría Audio especial');$check(str_contains($r['texto'],'Parlante nuevo'),'Categorías nuevas se reconocen desde la base');
 $r=responder_asistente($db,'De la marca inexistente');$check(str_contains($r['texto'],'No encontré esa marca')&&!str_contains($r['texto'],'Laptop Uno'),'Marca inexistente no devuelve el catálogo completo');
 require_once __DIR__.'/../includes/listados.php';$l=listar_admin($db,'productos',['marca'=>'3','categoria'=>'3'],true);$check($l['total']===1&&$l['filas'][0]['nombre']==='Celular Uno','El listado y CSV conservan los filtros exactos del chat');
+foreach(['CUANTOS CLIENTES REGISTRADOS TENEMOS','¿Cuál es el número de clientes registrados?','Total de clientes'] as $pregunta){$r=responder_asistente($db,$pregunta);$total=(int)$db->query('SELECT COUNT(*) FROM clientes')->fetchColumn();$check($r['texto']==='Tenemos '.$total.' clientes registrados.'&&!requiere_gemini_asistente($pregunta),'Conteo breve y local: '.$pregunta);}
+$check(tipo_consulta_integral('Lista los clientes registrados')==='clientes_integrales','Solicitar un listado conserva su intención');
 echo "$n comprobaciones correctas. SQLite en memoria; sin API externa.\n";

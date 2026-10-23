@@ -7,7 +7,7 @@ $db->exec("INSERT INTO productos VALUES(1,'A','Agotado',0,1),(2,'B','Baja cobert
 $n=0;$check=function($ok,$texto)use(&$n){if(!$ok)throw new RuntimeException($texto);$n++;echo "OK: $texto\n";};
 $coordinador=new CoordinadorTienda();$r=$coordinador->ejecutar($db,[],'2026-10-14 12:00:00');
 $check($r['inventario']['total']===3&&$r['inventario']['agotados']===1,'Inventario excluye inactivos y stock superior a cinco');
-$check(array_column($r['traza'],'agente')===['inventario','analisis','notificaciones'],'Coordinador registra el paso de mensajes entre agentes');
+$check(array_column($r['traza'],'agente')===['inventario','seguimiento','proyeccion','analisis','notificaciones','auditor'],'Coordinador registra el paso de mensajes entre agentes');
 $a=$r['analisis']['alertas'];$check($a[0]['prioridad']==='Crítica'&&$a[0]['id_producto']===1,'Los agotados tienen prioridad crítica');
 $check($a[1]['vendidas_30_dias']===60&&$a[1]['cobertura_dias']===1.0,'Análisis excluye cancelados, pendientes y ventas fuera del periodo');
 $check($a[1]['prioridad']==='Alta'&&$a[1]['reposicion_sugerida']===26,'Prioriza cobertura y calcula propuesta explícita de reposición');

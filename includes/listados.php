@@ -54,5 +54,5 @@ function render_filtros_admin(string $tipo,array $lista): void {
         foreach(['bajo'=>'Bajo · 0 a 5','critico'=>'Crítico · menos de 15','agotado'=>'Agotado · 0','disponible'=>'Con existencias'] as $valor=>$nombre)echo '<option value="'.$valor.'"'.($valor===$lista['stock']?' selected':'').'>'.$nombre.'</option>';
         echo '</select></div>';
     }
-    echo '<div><label for="filtro-orden">Ordenar</label><select name="orden" id="filtro-orden">';foreach($ordenes as $valor=>$nombre) echo '<option value="'.$valor.'"'.($valor===$lista['orden']?' selected':'').'>'.$nombre.'</option>';echo '</select></div><button type="submit" class="btn-primary">Aplicar</button><a href="listar.php" class="filter-reset">Limpiar</a></form>';
+    echo '<div><label for="filtro-orden">Ordenar</label><select name="orden" id="filtro-orden">';foreach($ordenes as $valor=>$nombre) echo '<option value="'.$valor.'"'.($valor===$lista['orden']?' selected':'').'>'.$nombre.'</option>';echo '</select></div><button type="submit" class="btn-primary">Aplicar filtros</button><a href="listar.php" class="filter-reset">Quitar filtros</a></form>';
 }

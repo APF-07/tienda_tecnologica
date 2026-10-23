@@ -21,6 +21,9 @@ function contexto_gemini(PDO $db, ?string $directorio=null): array {
     $contexto['metodos_pago']=$db->query('SELECT metodo_pago,COUNT(*) pedidos FROM pedidos GROUP BY metodo_pago')->fetchAll();
     $contexto['ventas_30_dias']=consultar_ventas_admin($db,'últimos 30 días');
     $contexto['alcance']='Se consultan todos los registros para los totales. Las listas son muestras limitadas y no representan todo el historial. Clientes y pedidos individuales se resuelven localmente; no hay contactos ni contraseñas en este contexto. Los métodos de pago registrados no acreditan cobros recibidos.';
+    $contexto['agentes']=resumen_asistente_agentes($db);
+    $contexto['vigencia_pronosticos']=resumen_proyeccion_agente($directorio);
+    $contexto['modelos_individuales']=resumen_modelos_individuales($directorio);
     foreach(['pedidos','ventas','clientes','productos'] as $tipo){
         $informe=informe_asistente($tipo,$directorio);
         if(!$informe)continue;

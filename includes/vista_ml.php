@@ -6,10 +6,16 @@ if (!is_array($ml) || ($ml['schema_version'] ?? 0)!==2) $ml=null;
 <section class="ml-section" aria-labelledby="ml-titulo">
 <header class="ml-heading"><div><span class="analytics-tag">MODELOS / MACHINE LEARNING</span><h2 id="ml-titulo">Predicciones con evaluación</h2><p><?php if($ml): ?>Entrenado: <?php echo e($ml['generado']); ?> · Corte: <?php echo e($ml['fecha_corte']); ?> · MySQL / MariaDB<?php else: ?>Entrena los modelos para ver resultados y métricas de evaluación.<?php endif; ?></p></div><form id="form-entrenar" action="entrenar.php" method="POST"><?php echo csrf_campo(); ?><button class="ml-train" type="submit">Entrenar y actualizar</button></form></header>
 <p id="estado-entrenamiento" role="status" aria-live="polite"></p>
+<p><a class="ml-train" href="control.php">Control automático / manual y elección del modelo ↗</a></p>
 <?php if($ml): foreach($ml['modelos'] as $modelo): ?>
 <article class="ml-model"><div class="ml-model-heading"><div><h3><?php echo e($modelo['nombre']); ?></h3><span><?php echo e($modelo['algoritmo']); ?></span></div><span class="ml-state"><?php echo $modelo['estado']==='listo'?'Entrenado':'Historial insuficiente'; ?></span></div><p class="ml-description"><?php echo e($modelo['descripcion']); ?></p>
+<?php if(isset($modelo['control'])): ?><p class="ml-description"><strong><?= e($modelo['control']['modo']) ?> · <?= (int)$modelo['control']['familias_ml'] ?> familias ML comparadas.</strong> <?= e($modelo['control']['motivo']) ?> Recomendación automática: <?= e($modelo['control']['recomendado']) ?>.</p><?php endif; ?>
+<?php if(isset($modelo['decision'])): ?><p class="ml-description"><strong>Apoyo a la decisión:</strong> <?= e($modelo['decision']['uso']) ?> <?= e($modelo['decision']['advertencia']) ?></p><?php endif; ?>
 <?php if(isset($modelo['calidad'])): $calidad=$modelo['calidad']; ?>
 <div class="ml-quality"><div class="ml-quality-number"><?= e(number_format((float)$calidad['porcentaje'],1,',','.')) ?><span>%</span></div><div class="ml-quality-info"><h4><?= e($calidad['titulo']) ?></h4><p><?= (int)$calidad['aciertos'] ?> de <?= (int)$calidad['dias'] ?> días de prueba · <?= (int)$calidad['ventanas'] ?> ventanas temporales</p><div class="ml-quality-track" aria-hidden="true"><span style="width:<?= max(0,min(100,(float)$calidad['porcentaje'])) ?>%"></span></div><small><?= e($calidad['explicacion']) ?></small></div></div>
+<?php endif; ?>
+<?php if(isset($modelo['tipo_modelo'])): ?>
+<form class="ml-individual" data-tipo="<?= e($modelo['tipo_modelo']) ?>" data-url="<?= e(ruta('admin/ml/consultar_individual.php')) ?>"><label>ID de <?= $modelo['tipo_modelo']==='recompra'?'cliente':($modelo['tipo_modelo']==='cancelacion'?'pedido':'producto') ?><input type="number" min="1" step="1" name="id" required placeholder="Ej. 515"></label><button type="submit">Consultar predicción ↗</button><p class="ml-individual-result" role="status" aria-live="polite">Consulta cualquier identificador. Si no tiene datos suficientes, se indicará sin inventar un resultado.</p></form>
 <?php endif; ?>
 <div class="ml-metrics"><?php foreach($modelo['metricas'] as $nombre=>$valor): ?><div><span><?php echo e($nombre); ?></span><strong><?php echo e(is_float($valor) ? number_format($valor,2,',','.') : ($valor ?? '—')); ?><?= $valor !== null && strpos($nombre,'(%)') !== false ? '%' : '' ?></strong></div><?php endforeach; ?></div>
 <div class="analytics-charts"><?php foreach($modelo['graficos'] as $grafico): $indice_ml=count($graficos_ml ?? []); $graficos_ml[]=$grafico; ?><article><h4><?php echo e($grafico['titulo']); ?></h4><div class="chart-frame"><canvas id="ml-grafico-<?php echo $indice_ml; ?>" aria-label="<?php echo e($grafico['titulo']); ?>" role="img"></canvas></div><details><summary>Ver datos del gráfico</summary><table><thead><tr><th>Concepto</th><?php foreach($grafico['series'] ?? [['nombre'=>'Valor']] as $serie): ?><th><?php echo e($serie['nombre']); ?></th><?php endforeach; ?></tr></thead><tbody><?php foreach($grafico['datos']['labels'] as $i=>$label): ?><tr><td><?php echo e($label); ?></td><?php foreach($grafico['series'] ?? [['valores'=>$grafico['datos']['valores']]] as $serie): ?><td><?php echo e($serie['valores'][$i]); ?></td><?php endforeach; ?></tr><?php endforeach; ?></tbody></table></details></article><?php endforeach; ?></div>
@@ -20,6 +26,11 @@ if (!is_array($ml) || ($ml['schema_version'] ?? 0)!==2) $ml=null;
 </section>
 <script>
 document.addEventListener('DOMContentLoaded',()=>{
+    document.querySelectorAll('.ml-individual').forEach(form=>form.addEventListener('submit',async event=>{
+        event.preventDefault();const button=form.querySelector('button'),result=form.querySelector('.ml-individual-result');button.disabled=true;result.textContent='Consultando el informe evaluado…';
+        try{const url=form.dataset.url+'?'+new URLSearchParams({tipo:form.dataset.tipo,id:form.elements.id.value});const response=await fetch(url,{cache:'no-store'});const data=await response.json();if(!response.ok||!data.ok)throw Error(data.mensaje||'No se pudo consultar.');result.textContent=data.resultado.texto;}
+        catch(error){result.textContent=error.message;}finally{button.disabled=false;}
+    }));
     if(window.Chart){Chart.defaults.color='#bdcce0';Chart.defaults.borderColor='#2a3b54';}
     const graficos=<?php echo json_encode($graficos_ml ?? [],JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT); ?>;
     if(window.Chart) graficos.forEach((g,i)=>{

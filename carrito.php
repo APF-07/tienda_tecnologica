@@ -150,7 +150,7 @@ $total_precio = array_sum(array_map(fn($item) => precio_centimos($item['precio']
         }
     </style>
 <link rel="stylesheet" href="css/mejoras.css">
-<link rel="stylesheet" href="css/experiencia.css?v=20261014"><script src="js/experiencia.js?v=20261014" defer></script>
+<link rel="stylesheet" href="css/experiencia.css?v=20261020"><script src="js/experiencia.js?v=20261014" defer></script>
 </head>
 <body>
 
@@ -200,7 +200,7 @@ $total_precio = array_sum(array_map(fn($item) => precio_centimos($item['precio']
 
                 <div class="cart-summary">
                     <div class="cart-actions">
-                        <button type="submit" class="btn-update">Actualizar Carrito</button>
+                        <button type="submit" class="btn-update">Guardar cantidades</button>
                         <button type="submit" name="accion_boton" value="vaciar" class="btn-empty" formnovalidate>Vaciar carrito</button>
                     </div>
                     <div class="cart-total-text">
@@ -210,14 +210,14 @@ $total_precio = array_sum(array_map(fn($item) => precio_centimos($item['precio']
             </form>
 
             <div style="text-align: right; margin-top: 20px;">
-                <a href="checkout.php" class="btn-checkout">Proceder al Pago &rarr;</a>
+                <a href="checkout.php" class="btn-checkout">Continuar con el pedido &rarr;</a>
             </div>
 
         <?php else: ?>
             <div class="empty-cart">
                 <h3>Tu carrito de compras está vacío.</h3>
                 <p style="margin: 15px 0; font-size: 14px;">Explora nuestro catálogo tecnológico y añade productos para comenzar tu compra.</p>
-                <a href="tienda.php" class="btn-checkout" style="display: inline-block; margin-top: 10px;">Ir a la Tienda</a>
+                <a href="tienda.php" class="btn-checkout store-secondary" style="margin-top:10px">Seguir comprando</a>
             </div>
         <?php endif; ?>
     </div>

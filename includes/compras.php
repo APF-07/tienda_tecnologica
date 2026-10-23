@@ -1,12 +1,13 @@
 <?php
 require_once __DIR__.'/validacion.php';
 require_once __DIR__.'/alertas_operativas.php';
-function registrar_compra(PDO $conexion, array &$carrito, array $datos): int {
+require_once __DIR__.'/registro_agentes.php';
+function registrar_compra(PDO $conexion, array &$carrito, array $datos,?callable $notificar=null): int {
     $datos = datos_compra($datos);
     validar_compra($datos);
     foreach (['nombre','apellido','correo','telefono','dni','direccion','tipo_envio','metodo_pago'] as $campo) $$campo = $datos[$campo];
     if (!$carrito) throw new RuntimeException('El carrito está vacío.');
-    preparar_alertas_operativas($conexion);
+    preparar_registro_agentes($conexion);
     $stockResultante=[];
     try {
             $conexion->beginTransaction();
@@ -25,7 +26,7 @@ function registrar_compra(PDO $conexion, array &$carrito, array $datos): int {
                     throw new RuntimeException('El precio de un producto cambió. Revisa el total actualizado y confirma nuevamente.');
                 }
                 $item['nombre'] = $producto['nombre'];
-                $stockResultante[]=['id_producto'=>$item['id_producto'],'codigo'=>$producto['codigo'],'nombre'=>$producto['nombre'],'stock'=>(int)$producto['stock']-$item['cantidad']];
+                $stockResultante[]=['id_producto'=>$item['id_producto'],'codigo'=>$producto['codigo'],'nombre'=>$producto['nombre'],'stock'=>(int)$producto['stock']-$item['cantidad'],'stock_anterior'=>(int)$producto['stock'],'estado'=>1];
                 $total_centimos += precio_centimos($producto['precio']) * $item['cantidad'];
             }
             unset($item);
@@ -53,7 +54,7 @@ function registrar_compra(PDO $conexion, array &$carrito, array $datos): int {
             registrar_stock_venta($conexion,(int)$id_pedido,$stockResultante);
             $conexion->commit();
             // La alerta ya está en MySQL; el proveedor externo no puede deshacer la compra.
-            try{enviar_alertas_operativas($conexion,null,null,1);}catch(Throwable $e){error_log('Compra guardada; envío operativo pendiente de revisión.');}
+            try{if($notificar)$notificar($conexion);else enviar_alertas_operativas($conexion,null,null,1);}catch(Throwable $e){error_log('Compra guardada; envío operativo pendiente de revisión.');}
             return (int)$id_pedido;
     } catch (Throwable $e) {
         unset($item);

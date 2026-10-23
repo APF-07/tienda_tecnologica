@@ -13,7 +13,7 @@ unset($_SESSION['error_login'], $_SESSION['correo_login']);
     <title>Iniciar sesión | TechStore</title>
     <link rel="stylesheet" href="css/login.css?v=20261013-tienda">
     <script src="js/login.js?v=20261014-acceso" defer></script>
-<link rel="stylesheet" href="css/experiencia.css?v=20261014"><script src="js/experiencia.js?v=20261014" defer></script>
+<link rel="stylesheet" href="css/experiencia.css?v=20261020"><script src="js/experiencia.js?v=20261014" defer></script>
 <link rel="stylesheet" href="css/login-creativo.css?v=2">
 </head>
 <body>
@@ -71,7 +71,7 @@ unset($_SESSION['error_login'], $_SESSION['correo_login']);
                     </div>
                     <button class="submit-button" type="submit"><span>Iniciar sesión</span><span aria-hidden="true">→</span></button>
                 </form>
-                <div class="login-card-bottom"><span class="access-note"><span class="status-dot" aria-hidden="true"></span> Solo administradores</span><a href="tienda.php">Ir a la tienda <span aria-hidden="true">↗</span></a></div>
+                <div class="login-card-bottom"><span class="access-note"><span class="status-dot" aria-hidden="true"></span> Acceso del equipo</span><a href="tienda.php">Ir a la tienda <span aria-hidden="true">↗</span></a></div>
             </div>
             <p class="access-footer">TechStore · Panel de administración</p>
         </section>

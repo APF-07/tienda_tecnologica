@@ -1,3 +1,5 @@
+> Versión vigente (16/10/2026): [Dashboard automático y cinco agentes](DASHBOARD_AUTOMATICO.md). Este documento conserva detalles de la versión anterior; las nuevas rutas usan registro común MySQL.
+
 # Agentes y alertas
 
 Acceso: Administración → Agentes y alertas. El administrador puede pulsar «Ejecutar revisión»; la tarea de Windows también realiza la revisión cada 15 minutos mientras se cumplen sus condiciones de ejecución.

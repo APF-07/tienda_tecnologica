@@ -1,5 +1,11 @@
 # Metodología de Machine Learning
 
+La actualización de recompra, demanda por producto y consultas individuales está
+documentada en [Predicciones individuales](PREDICCIONES_INDIVIDUALES.md).
+
+La actualización de recompra, demanda por producto y consultas individuales está
+documentada en [Predicciones individuales](PREDICCIONES_INDIVIDUALES.md).
+
 ## Objetivo y fuente de datos
 
 El sistema utiliza la base MySQL/MariaDB de la tienda para segmentar inventario y clientes, pronosticar demanda e importes, y estimar riesgo de cancelación. La base combina los registros del proyecto con un histórico académico adicional, cuya generación probabilística es reproducible. Por tanto, las métricas describen este conjunto académico y no validan desempeño en un comercio real.

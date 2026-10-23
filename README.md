@@ -4,6 +4,12 @@ Proyecto PHP 8.2 y MySQL/MariaDB para catálogo, carrito, pedidos y administraci
 
 ## Arquitectura y evidencias
 
+- [Cinco predicciones y consultas por cliente/producto/pedido](docs/PREDICCIONES_INDIVIDUALES.md).
+
+- [Cinco predicciones y consultas por cliente/producto/pedido](docs/PREDICCIONES_INDIVIDUALES.md).
+
+- [Dashboard automático, cinco agentes y seguimiento ML](docs/DASHBOARD_AUTOMATICO.md).
+
 - [Diagramas de arquitectura y flujo de agentes](docs/ARQUITECTURA.md).
 - [Resultados de pruebas y guion de demostración](docs/EVIDENCIAS_PRUEBAS.md).
 - [Salida reproducible de pruebas locales](docs/evidencias/pruebas-locales.txt).
@@ -108,3 +114,22 @@ Pruebas de integración Gemini sin conexión externa ni claves reales (SQLite te
 ```powershell
 C:/xampp/php/php.exe scripts/pruebas_gemini.php
 ```
+
+# Centro de operaciones
+
+En el administrador, **Centro de operaciones** reúne la comparación prospectiva
+de ventas/pedidos con los resultados reales y las acciones priorizadas del día.
+Pronósticos, observaciones y seguimientos se conservan en MySQL. La aplicación
+prepara las tablas automáticamente; también se incluye la migración aditiva
+`database/migraciones/20261019_centro_operaciones.sql`.
+Ver [funcionamiento y límites](docs/CENTRO_OPERACIONES.md).
+
+## Gestión de la tienda
+
+Nuevo apartado de administración con movimientos de inventario, proveedores,
+órdenes de reposición y recepciones parciales, devoluciones y registro de reembolsos
+externos, usuarios con roles y resumen diario de Telegram. Persiste en MySQL y
+conserva los accesos previos. [Guía de uso y límites](docs/GESTION_AVANZADA.md).
+Migración aditiva: `database/migraciones/20261019_gestion_avanzada.sql`.
+
+Requisitos académicos, controles ML y auditor: [Guía de demostración](docs/REQUISITOS_INGENIERO.md).

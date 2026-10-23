@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/permisos.php';
 require_once __DIR__.'/catalogo.php';
 require_once __DIR__.'/chat_cliente.php';
 function imagen_producto(array $producto): string {
@@ -20,6 +21,12 @@ function render_store_header(string $activo = ''): void {
     render_chat_cliente();
 }
 function render_admin_sidebar(string $activo = ''): void {
+    $rol=$_SESSION['rol']??'administrador';
+    if($rol!=='administrador'){
+        echo '<aside class="admin-sidebar" aria-label="Menú del equipo"><div class="sidebar-brand">TechStore<small>'.e(ucfirst($rol)).'</small></div><nav><ul class="sidebar-menu"><li><a href="'.e(ruta('admin/gestion.php')).'">Gestión de la tienda</a></li>';
+        if($rol==='vendedor')echo '<li><a href="'.e(ruta('admin/pedidos/listar.php')).'">Pedidos</a></li><li><a href="'.e(ruta('admin/clientes/listar.php')).'">Clientes</a></li>';
+        echo '</ul></nav><div class="sidebar-footer"><a href="'.e(ruta('tienda.php')).'">Ver tienda ↗</a><form method="POST" action="'.e(ruta('logout.php')).'">'.csrf_campo().'<button type="submit" class="btn-logout">Cerrar sesión</button></form></div></aside>';return;
+    }
     $iconos = [
         'dashboard'=>'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
         'productos'=>'<path d="m12 3 9 5v8l-9 5-9-5V8Z"/><path d="m3 8 9 5 9-5M12 13v8M7.5 5.5l9 5"/>',
@@ -38,13 +45,22 @@ function render_admin_sidebar(string $activo = ''): void {
     echo '<aside class="admin-sidebar" aria-label="Menú de administración"><div class="sidebar-brand"><span class="admin-brand-mark" aria-hidden="true">T</span><div>Tech<span class="brand-accent">Store</span><small>ADMINISTRACIÓN</small></div></div><nav aria-label="Secciones del administrador"><ul class="sidebar-menu">';
     $menus=['dashboard'=>'Panel de control','productos'=>'Productos','categorias'=>'Categorías','marcas'=>'Marcas','pedidos'=>'Pedidos','clientes'=>'Clientes'];
     foreach($menus as $clave=>$nombre) {
+        if($clave==='productos')echo '<li class="sidebar-section" role="presentation">Catálogo</li>';
+        if($clave==='pedidos')echo '<li class="sidebar-section" role="presentation">Ventas</li>';
         $archivo=$clave==='dashboard'?'admin/dashboard.php':'admin/'.$clave.'/listar.php';
         echo '<li><a href="'.e(ruta($archivo)).'"'.($clave===$activo?' class="active" aria-current="page"':'').'>'.$icono($clave).'<span class="menu-label">'.$nombre.'</span></a></li>';
     }
     $esMl = $activo === 'ml' || strpos($_SERVER['SCRIPT_NAME'] ?? '', '/admin/ml/') !== false;
-    echo '<li><a href="'.e(ruta('admin/asistente/index.php')).'"'.($activo==='asistente'?' class="active" aria-current="page"':'').'>'.$icono('asistente').'<span class="menu-label">Asistente</span></a></li>';
+    echo '<li class="sidebar-section" role="presentation">Operación</li>';
+    echo '<li><a href="'.e(ruta('admin/gestion.php')).'"'.($activo==='gestion'?' class="active" aria-current="page"':'').'>'.$icono('productos').'<span class="menu-label">Inventario y proveedores</span></a></li>';
     echo '<li><a href="'.e(ruta('admin/agentes/index.php')).'"'.($activo==='agentes'?' class="active" aria-current="page"':'').'>'.$icono('categorias').'<span class="menu-label">Agentes y alertas</span></a></li>';
-    echo '<li class="menu-analytics"><a href="'.e(ruta('admin/ml/pedidos_ia.php')).'"'.($esMl?' class="active" aria-current="page"':'').'>'.$icono('ml').'<span class="menu-label">Analítica y proyección</span></a></li><li class="menu-store"><a href="'.e(ruta('tienda.php')).'">'.$icono('tienda').'<span class="menu-label">Ver tienda</span><span class="menu-external" aria-hidden="true">↗</span></a></li></ul></nav><div class="sidebar-footer">';
+    echo '<li><a href="'.e(ruta('admin/operaciones.php')).'"'.($activo==='operaciones'?' class="active" aria-current="page"':'').'>'.$icono('ml').'<span class="menu-label">Acciones y resultados</span></a></li>';
+    echo '<li class="sidebar-section" role="presentation">Inteligencia</li>';
+    $esControl=basename($_SERVER['SCRIPT_NAME']??'')==='control.php'&&$esMl;
+    echo '<li><a href="'.e(ruta('admin/ml/controles.php')).'"'.(basename($_SERVER['SCRIPT_NAME']??'')==='controles.php'?' class="active" aria-current="page"':'').'>'.$icono('ml').'<span class="menu-label">Cinco controles ML</span></a></li>';
+    echo '<li><a href="'.e(ruta('admin/asistente/index.php')).'"'.($activo==='asistente'?' class="active" aria-current="page"':'').'>'.$icono('asistente').'<span class="menu-label">Asistente de gestión</span></a></li>';
+    echo '<li class="menu-analytics"><a href="'.e(ruta('admin/ml/predicciones.php')).'"'.($esMl&&!$esControl?' class="active" aria-current="page"':'').'>'.$icono('ml').'<span class="menu-label">Predicciones y analítica</span></a></li>';
+    echo '<li><a href="'.e(ruta('admin/ml/control.php')).'"'.($esControl?' class="active" aria-current="page"':'').'>'.$icono('categorias').'<span class="menu-label">Configurar modelos ML</span></a></li><li class="menu-store"><a href="'.e(ruta('tienda.php')).'">'.$icono('tienda').'<span class="menu-label">Ver tienda</span><span class="menu-external" aria-hidden="true">↗</span></a></li></ul></nav><div class="sidebar-footer">';
     echo '<form action="'.e(ruta('logout.php')).'" method="POST">'.csrf_campo().'<button class="btn-logout" type="submit">'.$icono('salir').'<span>Cerrar sesión</span></button></form></div></aside>';
 }
 function render_paginacion(int $pagina,int $paginas,int $total): void {

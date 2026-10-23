@@ -32,8 +32,8 @@ try {
         .alert-error { background: #fde8e8; color: #c0392b; padding: 10px 15px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
     </style>
 <link rel="stylesheet" href="../../css/admin-mejoras.css?v=20261013-menu">
-<link rel="stylesheet" href="../../css/experiencia.css?v=20261014"><script src="../../js/experiencia.js?v=20261014" defer></script>
-<link rel="stylesheet" href="../../css/admin-experiencia.css?v=1"><script src="../../js/admin-experiencia.js?v=1" defer></script>
+<link rel="stylesheet" href="../../css/experiencia.css?v=20261020"><script src="../../js/experiencia.js?v=20261014" defer></script>
+<link rel="stylesheet" href="../../css/admin-experiencia.css?v=20261020"><script src="../../js/admin-experiencia.js?v=20261020" defer></script>
 </head>
 <body>
 
@@ -82,8 +82,8 @@ try {
                                 </td>
                                 <td><?php echo $marca['fecha_registro']; ?></td>
                                 <td>
-                                    <a href="editar.php?id=<?php echo $marca['id_marca']; ?>" class="btn-action btn-edit">Editar</a>
-                                    <form action="eliminar.php" method="POST" class="inline-action" onsubmit="return confirm('¿Eliminar este registro?');"><?php echo csrf_campo(); ?><input type="hidden" name="id" value="<?php echo $marca['id_marca']; ?>"><button type="submit" class="btn-action btn-delete">Eliminar</button></form>
+                                    <a href="editar.php?id=<?php echo $marca['id_marca']; ?>" class="btn-action btn-edit" aria-label="Editar marca <?= e($marca['nombre']) ?>">Editar marca</a>
+                                    <form action="eliminar.php" method="POST" class="inline-action" onsubmit="return confirm('¿Eliminar esta marca? Esta acción puede rechazarse si tiene registros relacionados.');"><?php echo csrf_campo(); ?><input type="hidden" name="id" value="<?php echo $marca['id_marca']; ?>"><button type="submit" class="btn-action btn-delete" aria-label="Eliminar marca <?= e($marca['nombre']) ?>">Eliminar</button></form>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

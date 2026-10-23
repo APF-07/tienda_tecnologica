@@ -1,0 +1,10 @@
+OK El informe cambió. Recarga y revisa la propuesta.
+OK No existe una propuesta para este producto.
+OK La categoría propuesta no está activa.
+OK El producto cambió después del entrenamiento. Reentrena antes de confirmar.
+OK Rechazos no cambian categoría
+OK Categoría proviene del informe, ignora propuesta del navegador
+OK Registra actor de revisión
+OK Confirmar no cambia stock
+OK El producto cambió después del entrenamiento. Reentrena antes de confirmar.
+9 comprobaciones; solo SQLite temporal, sin cambios en MySQL.

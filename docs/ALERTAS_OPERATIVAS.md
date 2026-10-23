@@ -1,3 +1,5 @@
+> Versión vigente (16/10/2026): [Dashboard automático y cinco agentes](DASHBOARD_AUTOMATICO.md). Este documento conserva detalles de la versión anterior; las nuevas rutas usan registro común MySQL.
+
 # Alertas de compras y pedidos demorados
 
 ## Stock después de una compra

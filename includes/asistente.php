@@ -3,9 +3,23 @@ require_once __DIR__.'/../config/app.php';
 require_once __DIR__.'/consultas_asistente.php';
 require_once __DIR__.'/asistente_integral.php';
 require_once __DIR__.'/filtros_asistente.php';
+require_once __DIR__.'/ranking_clientes.php';
+require_once __DIR__.'/predicciones_individuales.php';
+require_once __DIR__.'/proyeccion_agente.php';
+function pregunta_prioridades_agentes(string $pregunta): bool {
+    $t=normalizar_consulta_admin($pregunta);
+    return (bool)preg_match('/que.*(?:atender|priorizar)|prioridades|recomendaciones.*hoy|estado.*agentes|que.*agentes/u',$t);
+}
+function resumen_asistente_agentes(PDO $db): array {
+    try{$q=$db->prepare('SELECT datos FROM agentes_estado WHERE clave=?');$q->execute(['ultima']);$r=json_decode((string)$q->fetchColumn(),true);}catch(PDOException $e){$r=null;}
+    if(!is_array($r))return ['fecha'=>null,'recomendaciones'=>[],'estado'=>'Sin revisión registrada; abre el dashboard para ejecutar los agentes.'];
+    $antigua=time()-strtotime($r['fecha'])>300;
+    return ['fecha'=>$r['fecha'],'estado'=>$antigua?'Revisión antigua; actualiza el dashboard. Las prioridades siguientes corresponden a esa fecha.':'Revisión reciente','recomendaciones'=>array_slice($r['analisis']['recomendaciones']??[],0,6),'auditor'=>$r['auditor']??null,'reporte'=>$r['reporte']??null,'agentes'=>array_map(static fn($a)=>['agente'=>$a['agente'],'estado'=>$a['estado']],$r['traza']??[])];
+}
 function intencion_asistente(string $pregunta): string {
     $texto = strtolower(strtr($pregunta,['Á'=>'a','É'=>'e','Í'=>'i','Ó'=>'o','Ú'=>'u','á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','Ñ'=>'n','ñ'=>'n']));
     if (preg_match('/\b(borra|borrar|elimina|eliminar|modifica|modificar|actualiza|actualizar|cambia|cambiar|entrena|entrenar|cancela|cancelar)\b/u',$texto)) return 'accion';
+    if (preg_match('/\b(cliente|clientes|comprador|compradores)\b/u',$texto) && preg_match('/\btop\b|ranking|mejores|principales|mas.*(?:gast|importe)|mayor.*(?:gast|importe)/u',$texto))return 'ranking_clientes';
     if (preg_match('/\b(cliente|clientes|comprador|compradores)\b/u',$texto) && preg_match('/frecuen|mas.*compr|compr.*mas|mayor.*compr|top.*client|mejor.*client/u',$texto)) return 'comprador_frecuente';
     if (str_contains($texto,'porcentaje') || str_contains($texto,'56,6') || str_contains($texto,'56.6') || str_contains($texto,'precision')) return 'porcentaje';
     if (str_contains($texto,'cancelacion') || str_contains($texto,'riesgo')) return 'cancelacion';
@@ -32,11 +46,20 @@ function informe_asistente(string $tipo, ?string $directorio = null): ?array {
     return is_array($informe) && ($informe['schema_version'] ?? 0) === 2 ? $informe : null;
 }
 function requiere_gemini_asistente(string $pregunta): bool {
+    if(tipo_prediccion_individual($pregunta)!==null)return false;
     if(consulta_clasificacion_admin($pregunta))return false;
     if(tipo_consulta_integral($pregunta)!==null)return false;
-    return !in_array(intencion_asistente($pregunta),['accion','comprador_frecuente','producto_mas_vendido','ventas_actuales','buscar_productos','stock','pendientes','recientes','pedidos','clientes'],true);
+    return !in_array(intencion_asistente($pregunta),['accion','ranking_clientes','comprador_frecuente','producto_mas_vendido','ventas_actuales','buscar_productos','stock','pendientes','recientes','pedidos','clientes'],true);
 }
 function responder_asistente(PDO $db, string $pregunta, ?string $directorio = null): array {
+    $individual=responder_prediccion_individual($db,$pregunta,$directorio);if($individual!==null)return $individual;
+    if(intencion_asistente($pregunta)==='ranking_clientes')return responder_ranking_clientes($db,$pregunta);
+    if(pregunta_prioridades_agentes($pregunta)&&intencion_asistente($pregunta)!=='accion'){
+        $r=resumen_asistente_agentes($db);$texto=$r['estado'].($r['fecha']?' Fecha: '.$r['fecha'].'.':'');
+        foreach($r['recomendaciones'] as $a)$texto.="\n• ".$a['prioridad'].': '.$a['texto'].' Fuente: '.$a['fuente'].'.';
+        if(isset($r['auditor'])){$texto.="\nAuditor: ".$r['auditor']['estado'].'.';foreach($r['auditor']['observaciones'] as $nota)$texto.="\n• ".$nota;}
+        return ['texto'=>$texto,'enlaces'=>[['texto'=>'Abrir dashboard automático','url'=>ruta('admin/dashboard.php')]],'fuente'=>'Resultados del coordinador en MySQL','fecha'=>date('d/m/Y H:i')];
+    }
     $clasificacion=filtrar_clasificacion_admin($db,$pregunta);if($clasificacion!==null)return $clasificacion;
     $integral=respuesta_integral($db,$pregunta,$directorio);if($integral!==null)return $integral;
     $intencion = intencion_asistente($pregunta);

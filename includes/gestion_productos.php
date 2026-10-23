@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/catalogo.php';
+require_once __DIR__ . '/registro_agentes.php';
 function datos_producto(array $entrada): array {
     $datos=[];
     foreach(['codigo','nombre','descripcion','id_categoria','id_marca','precio','stock','estado'] as $campo) $datos[$campo]=is_scalar($entrada[$campo] ?? null)?trim((string)$entrada[$campo]):'';
@@ -31,6 +32,7 @@ function guardar_imagen_producto(?array $archivo): ?string {
 }
 function guardar_producto(PDO $db,array $datos,?array $archivo=null,int $id=0,?array &$anterior=null): int {
     validar_producto($datos);
+    preparar_registro_agentes($db);
     $imagenNueva=null;
     try {
         $db->beginTransaction();
@@ -54,6 +56,7 @@ function guardar_producto(PDO $db,array $datos,?array $archivo=null,int $id=0,?a
         else $stmt=$db->prepare('INSERT INTO productos(codigo,nombre,descripcion,id_categoria,id_marca,precio,stock,imagen,estado) VALUES(?,?,?,?,?,?,?,?,?)');
         $stmt->execute($valores);
         $resultado=$id ?: (int)$db->lastInsertId();
+        registrar_transicion_stock($db,['id_producto'=>$resultado]+$datos,$id?(int)$actual['stock']:0,$id?'ajuste':'alta',(string)$resultado,$id?'Ajuste desde la ficha del producto':'Alta de producto');
         $db->commit();
         return $resultado;
     } catch(Throwable $error) {

@@ -16,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
     try {
         $anterior=null;
         guardar_producto($conexion,$datos,$_FILES['imagen'] ?? null,$id,$anterior);
-        $aviso=$anterior?notificar_stock_guardado($id,$anterior,$datos):'';
+        $aviso=$anterior?notificar_stock_guardado($id,$anterior,$datos,null,null,null,$conexion):'';
         header('Location: listar.php?msg=' . rawurlencode($aviso?:'Producto guardado correctamente.')); exit;
     } catch (Throwable $e) {
         error_log($e->getMessage());
@@ -46,8 +46,8 @@ $marcas = $conexion->query('SELECT * FROM marcas ORDER BY nombre')->fetchAll();
         .alert-error { background: #fde8e8; color: #c0392b; padding: 10px 15px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
     </style>
 <link rel="stylesheet" href="../../css/admin-mejoras.css?v=20261013-menu">
-<link rel="stylesheet" href="../../css/experiencia.css?v=20261014"><script src="../../js/experiencia.js?v=20261014" defer></script>
-<link rel="stylesheet" href="../../css/admin-experiencia.css?v=1"><script src="../../js/admin-experiencia.js?v=1" defer></script>
+<link rel="stylesheet" href="../../css/experiencia.css?v=20261020"><script src="../../js/experiencia.js?v=20261014" defer></script>
+<link rel="stylesheet" href="../../css/admin-experiencia.css?v=20261020"><script src="../../js/admin-experiencia.js?v=20261020" defer></script>
 </head>
 <body>
 

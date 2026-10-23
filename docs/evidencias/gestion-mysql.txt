@@ -1,0 +1,12 @@
+Verificación local: 19/10/2026
+Comando: C:\xampp\php\php.exe scripts/pruebas.php
+Resultado: 40 comprobaciones correctas, código de salida 0.
+
+Se verificaron compra, cliente reutilizado, dirección por pedido, cancelación
+idempotente, reactivación sin stock, precios, carrito, importes en céntimos,
+clasificaciones y analítica. Adicionalmente: recepción parcial de reposición,
+balance del libro de inventario, devolución aceptada, céntimos de reembolso externo
+y rechazo de cancelación que duplicaría el stock devuelto.
+
+Se usaron exclusivamente tablas temporales en la conexión. No se modificaron los
+registros del proyecto, no se realizaron pagos y no se enviaron mensajes de prueba.

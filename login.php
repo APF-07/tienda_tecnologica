@@ -1,6 +1,8 @@
 <?php
 session_start(['cookie_httponly' => true, 'cookie_samesite' => 'Lax', 'cookie_secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off', 'use_strict_mode' => true]);
 require_once 'config/conexion.php';
+require_once 'includes/permisos.php';
+preparar_roles($conexion);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $correo = is_string($_POST['correo'] ?? null) ? trim($_POST['correo']) : '';
@@ -14,7 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     try {
-        $stmt = $conexion->prepare("SELECT * FROM usuarios WHERE correo = :correo AND rol = 'administrador' AND estado = 1 LIMIT 1");
+        $stmt = $conexion->prepare("SELECT * FROM usuarios WHERE correo = :correo AND estado = 1 LIMIT 1");
         $stmt->execute(['correo' => $correo]);
         $usuario = $stmt->fetch();
 
@@ -24,9 +26,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['id_usuario'] = $usuario['id_usuario'];
             $_SESSION['nombre'] = $usuario['nombre'];
             $_SESSION['correo'] = $usuario['correo'];
-            $_SESSION['rol'] = $usuario['rol'];
+            $_SESSION['rol'] = rol_usuario($conexion,(int)$usuario['id_usuario']);
+            if($_SESSION['rol']===null){unset($_SESSION['id_usuario']);$_SESSION['error_login']='Cuenta sin permisos activos.';header('Location: index.php');exit;}
 
-            header('Location: admin/dashboard.php');
+            header('Location: '.($_SESSION['rol']==='administrador'?'admin/dashboard.php':'admin/gestion.php'));
             exit();
         } else {
             $_SESSION['error_login'] = 'Correo o contraseña incorrectos.';

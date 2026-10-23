@@ -33,8 +33,8 @@ $pedidos = $lista['filas'];
         .alert-error { background: #fde8e8; color: #c0392b; padding: 10px 15px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; }
     </style>
 <link rel="stylesheet" href="../../css/admin-mejoras.css?v=20261013-menu">
-<link rel="stylesheet" href="../../css/experiencia.css?v=20261014"><script src="../../js/experiencia.js?v=20261014" defer></script>
-<link rel="stylesheet" href="../../css/admin-experiencia.css?v=1"><script src="../../js/admin-experiencia.js?v=1" defer></script>
+<link rel="stylesheet" href="../../css/experiencia.css?v=20261020"><script src="../../js/experiencia.js?v=20261014" defer></script>
+<link rel="stylesheet" href="../../css/admin-experiencia.css?v=20261020"><script src="../../js/admin-experiencia.js?v=20261020" defer></script>
 </head>
 <body>
 
@@ -54,7 +54,7 @@ $pedidos = $lista['filas'];
                 <div class="alert-error"><?php echo htmlspecialchars($error); ?></div>
             <?php endif; ?>
 
-<div class="admin-toolbar"><h2>Listado de pedidos</h2><a class="btn-action" href="exportar.php?<?php echo e(http_build_query(array_intersect_key($_GET,array_flip(['q','estado','orden'])))); ?>">Descargar CSV</a></div><?php render_filtros_admin('pedidos',$lista); ?>            <table>
+<div class="admin-toolbar"><h2>Listado de pedidos</h2><a class="btn-action" href="exportar.php?<?php echo e(http_build_query(array_intersect_key($_GET,array_flip(['q','estado','orden'])))); ?>">Exportar pedidos (CSV)</a></div><?php render_filtros_admin('pedidos',$lista); ?>            <table>
                 <thead>
                     <tr>
                         <th>ID Pedido</th>
@@ -84,7 +84,7 @@ $pedidos = $lista['filas'];
                                     </span>
                                 </td>
                                 <td>
-                                    <a href="detalle.php?id=<?php echo $ped['id_pedido']; ?>" class="btn-action">Ver Detalle</a>
+                                    <a href="detalle.php?id=<?php echo $ped['id_pedido']; ?>" class="btn-action">Gestionar pedido</a>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

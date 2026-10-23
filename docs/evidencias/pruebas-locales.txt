@@ -1,5 +1,5 @@
 TechStore - evidencia automatizada local
-Fecha UTC: 2026-10-15T17:18:10.5664806Z
+Fecha UTC: 2026-10-20T02:45:15.6592312Z
 Sin API externa: proveedores simulados y bases SQLite temporales.
 
 Suite: scripts/pruebas_alerta_guardado.php
@@ -105,5 +105,151 @@ OK: Marcas nuevas se reconocen desde la base sin programar sus nombres
 OK: Categorías nuevas se reconocen desde la base
 OK: Marca inexistente no devuelve el catálogo completo
 OK: El listado y CSV conservan los filtros exactos del chat
-26 comprobaciones correctas. SQLite en memoria; sin API externa.
+OK: Conteo breve y local: CUANTOS CLIENTES REGISTRADOS TENEMOS
+OK: Conteo breve y local: ¿Cuál es el número de clientes registrados?
+OK: Conteo breve y local: Total de clientes
+OK: Solicitar un listado conserva su intención
+30 comprobaciones correctas. SQLite en memoria; sin API externa.
+Codigo de salida: 0
+
+Suite: scripts/pruebas_alertas_operativas.php
+OK Rollback de compra no conserva avisos
+OK Una alerta por pedido y producto bajo stock
+OK Envío de stock tras compra y sin duplicados
+OK Solo pendientes antiguos; detección repetida no duplica
+OK No envía demora si el pedido ya fue atendido
+OK Rechazo conserva aviso pendiente en base
+OK Timeout incierto no se reenvía ciegamente
+OK Demora de cinco minutos respeta el límite y excluye historial anterior
+8 pruebas correctas. Sin MySQL real ni Telegram real.
+Codigo de salida: 0
+
+Suite: scripts/pruebas_cinco_agentes.php
+OK Seis agentes y auditor ejecutados con traza
+OK Seguimiento excluye pedidos atendidos
+OK Análisis incorpora hallazgos de seguimiento y proyección
+OK Rollback no deja alertas ni transición
+OK Venta y revisión usan el mismo registro sin duplicar stock
+OK Recuperación única guardada en MySQL
+OK Estado se conserva íntegro en base de datos
+OK Asistente explica prioridades con fuente real
+OK Sin ML no se inventan pronósticos
+OK Vigencia cambia con la fecha, no con cifras inventadas
+OK Archiva pronósticos futuros sin duplicar
+OK Evalúa posteriormente contra datos reales y referencia semanal
+12 pruebas correctas. SQLite y archivos de prueba; sin mensajes externos.
+Codigo de salida: 0
+
+Suite: scripts/pruebas_ranking_clientes.php
+OK Respeta cinco posiciones: Los 5 top clientes del sistema?
+OK Respeta cinco posiciones: Top 5 clientes
+OK Respeta cinco posiciones: Los cinco mejores clientes
+OK Ranking por importe usa otro orden y desempate explícito
+OK No inventa clientes para completar un ranking
+OK Ranking local evita transmitir nombres a Gemini
+OK Límite excesivo se explica sin recortar silenciosamente
+7 pruebas correctas; sin APIs ni datos reales.
+Codigo de salida: 0
+
+Suite: scripts/pruebas_predicciones_individuales.php
+OK Reconoce recompra individual
+OK Reconoce agotamiento individual
+OK No confunde inventario actual con predicción
+OK Informe ausente no inventa probabilidades
+OK Porcentaje viene del informe y permanece privado
+OK Asistente no publica 95 por ciento con evidencia limitada
+OK Cliente inexistente no recibe predicción
+OK Sin identificador solicita aclaración
+OK Stock modificado no presenta fecha operativa antigua
+OK Fecha se acompaña del supuesto y escenarios
+OK Informa cuando el pronóstico ya no es vigente
+11 pruebas correctas. Sin datos reales ni APIs.
+Codigo de salida: 0
+
+Suite: scripts/pruebas_dashboard_predicciones.php
+OK Sin informe no dibuja curvas
+OK Totales salen del informe guardado
+OK Histórico confirmado separado del futuro con huecos explícitos
+OK Indicador utiliza probabilidad evaluada
+OK Poca evidencia conserva actividad real sin porcentaje engañoso
+OK Actividad mensual incluye ceros y excluye pedidos pendientes
+OK Cliente sin modelo ni compras tiene su propio gráfico en cero
+OK No fabrica dashboard para cliente inexistente
+OK No inventa serie diaria desde un total agregado
+OK Curvas preservan stock inicial y escenarios del modelo
+OK Stock cambiado impide dibujar una proyección operativa antigua
+OK Barras excluyen pedidos ya atendidos
+OK Pedido atendido no se dibuja como riesgo actual
+13 pruebas correctas, SQLite y archivos temporales. Sin APIs externas.
+Codigo de salida: 0
+
+Suite: scripts/pruebas_centro_operaciones.php
+OK Una acción por día y entidad sin duplicación
+OK Agotados prioritarios y productos inactivos excluidos
+OK Revisar el panel no reabre acciones atendidas
+OK Estado y motivo auditados sin duplicar envío de formulario
+OK Rechaza estados no permitidos
+OK Pedido atendido resuelve automáticamente la tarea pendiente
+OK Reposición marca condición desaparecida y conserva seguimiento humano
+OK Problema persistente genera tarea nueva al día siguiente
+OK Archiva futuro una vez y nunca reconstruye el día iniciado
+OK No calcula error mientras falta el resultado real
+OK Contrasta con venta confirmada y excluye cancelación
+OK No reescribe resultados evaluados tras modificaciones posteriores
+OK Un día no se cuenta dos veces por varios entrenamientos
+OK Excluye registros antiguos sin trazabilidad de captura
+OK No archiva informes con fecha de generación futura
+15 pruebas correctas. SQLite temporal; sin Telegram, APIs ni datos del proyecto.
+Codigo de salida: 0
+
+Suite: scripts/pruebas_gestion_avanzada.php
+OK Saldo de apertura y salida de venta cuadran con stock
+OK Revisión repetida no duplica movimientos
+OK Ajuste físico trazable con responsable
+OK Crear orden no inventa recepción ni aumenta stock
+OK Recepción parcial actualiza stock y conserva pendiente
+OK Rechaza referencia de entrega duplicada
+OK Impide recibir por encima de lo pedido
+OK Recepción final cierra orden
+OK Orden cerrada no recibe de nuevo
+OK Cancelación conserva motivo y no devuelve stock inexistente
+OK Solicitudes reservan unidades y evitan sobredevolución
+OK No devuelve pedidos pendientes
+OK Solo recepción física aceptada reintegra existencias
+OK No reintegra dos veces una devolución
+OK No registra reembolso superior a lo vendido
+OK Un registro de reembolso por devolución sin duplicación
+OK Reembolso guarda céntimos exactos y referencia externa
+OK Protege al último administrador
+OK No permite desactivar al último administrador
+OK Un usuario de almacén no puede elevar su propio rol
+OK Desactivar una cuenta revoca su acceso efectivo
+OK Almacén no modifica permisos ni registra reembolsos
+OK Vendedor no entrena ML ni crea accesos
+OK Nueva cuenta usa hash y rol limitado desde su creación
+OK Resumen espera la hora configurada
+OK Un resumen por día aunque se ejecuten varios agentes
+OK Resumen corresponde al día cerrado y excluye cancelados del importe
+OK Resumen se puede desactivar
+OK Libro de movimientos conserva balance final tras reposición y devolución
+OK Reposición considera plazo del proveedor y entradas pendientes
+OK Rechazar libera unidades reservadas sin inventar stock
+OK Recepción y rechazo guardan responsable y observación
+OK El agente relee stock vigente e ignora una lectura antigua
+33 pruebas correctas. SQLite temporal; sin pagos, mensajes ni cuentas reales.
+Codigo de salida: 0
+
+Suite: scripts/pruebas_control_ml.php
+OK Entrenamiento automático disponible por defecto
+OK Modo desactivado no programa entrenamiento
+OK Modelo ajeno a la lista es rechazado
+OK Sin entrenamiento publicado requiere actualización
+OK Espera mínima evita tormenta de reintentos
+OK Puede reintentar al superar una hora
+OK Auditor acepta entradas consistentes
+OK ML vencido se advierte sin suprimir alertas válidas de inventario
+OK Un modelo vigente con error alto también exige revisión
+OK Contadores incoherentes bloquean envío del coordinador
+OK Stock negativo bloquea publicación
+11 comprobaciones correctas; sin APIs ni mensajes.
 Codigo de salida: 0

@@ -1,6 +1,6 @@
 # Evidencia de pruebas y demostración
 
-Fecha de verificación local: **15 de octubre de 2026** (America/Lima).
+Fecha de verificación local: **16 de octubre de 2026** (America/Lima).
 
 ## Resultados ejecutados
 
@@ -13,7 +13,9 @@ Fecha de verificación local: **15 de octubre de 2026** (America/Lima).
 | scripts/pruebas_gemini.php | 13 | Contexto limitado, protección de contactos/credenciales, cuotas, fallback y respuesta con transporte simulado |
 | scripts/pruebas_asistente_integral.php | 26 | Consultas exactas por marca/categoría, privacidad, filtros y ausencia de escritura en base |
 | tests/test_modelos.py | 11 | Pruebas unitarias de preparación y evaluación de modelos |
-| **Total** | **94** | Todas las suites indicadas terminaron con código 0 |
+| scripts/pruebas_alertas_operativas.php | 8 | Cola de avisos, demoras, descartes y errores de entrega |
+| scripts/pruebas_cinco_agentes.php | 12 | Cinco agentes, persistencia, deduplicación compartida, asistente y evaluación prospectiva |
+| **Total suites reproducibles** | **114** | Todas las suites indicadas terminaron con código 0 |
 
 Salida PHP conservada en [pruebas-locales.txt](evidencias/pruebas-locales.txt).
 Salida de ML en [pruebas-ml.txt](evidencias/pruebas-ml.txt).
@@ -76,3 +78,12 @@ Persistencia de archivos en Render Free, programador periódico en la nube,
 reintentos durables y validación integral de la versión desplegada. El aviso al
 guardar es inmediato y distinto de una tarea cada 15 minutos. Los agentes son
 componentes deterministas coordinados; no se presentan como agentes LLM autónomos.
+
+## Verificación de esta actualización
+
+Además de las 114 comprobaciones anteriores, se ejecutaron 35 comprobaciones
+de compras y gestión en MySQL con tablas temporales (`scripts/pruebas.php`) y
+sin envío externo: total de esta revisión **149 comprobaciones**.
+Se reentrenaron los cuatro informes ML con la base local; los resultados
+y las métricas se muestran en Analítica y proyección.
+El navegador confirmó cinco agentes, refresco del dashboard y pronósticos vigentes.

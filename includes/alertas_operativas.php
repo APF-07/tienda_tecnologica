@@ -5,9 +5,14 @@ function preparar_alertas_operativas(PDO $db): void {
 }
 function registrar_alerta_operativa(PDO $db,string $clave,string $tipo,int $entidad,string $texto): void {
     try{$q=$db->prepare('INSERT INTO alertas_operativas(clave,tipo,entidad,texto,creada) VALUES(?,?,?,?,?)');$q->execute([$clave,$tipo,$entidad,$texto,date('Y-m-d H:i:s')]);}
-    catch(PDOException $e){if(!in_array((string)$e->getCode(),['23000','23505'],true))throw $e;}
+    catch(PDOException $e){
+        if(!in_array((string)$e->getCode(),['23000','23505'],true))throw $e;
+        $existente=$db->prepare('SELECT clave FROM alertas_operativas WHERE clave=?');$existente->execute([$clave]);
+        if($existente->fetchColumn()===false)throw $e;
+    }
 }
 function registrar_stock_venta(PDO $db,int $pedido,array $productos): void {
+    if(function_exists('registrar_transicion_stock')){foreach($productos as $p)registrar_transicion_stock($db,$p,$p['stock_anterior']??null,'venta',(string)$pedido,'Salida por pedido registrado',0);return;}
     foreach($productos as $p){$stock=(int)$p['stock'];if($stock>5)continue;
         registrar_alerta_operativa($db,'venta-'.$pedido.'-'.$p['id_producto'],'stock_venta',(int)$p['id_producto'],"🛒 TechStore · Stock bajo después de una compra\nPedido #$pedido\n".mb_substr($p['nombre'],0,120).' ['.$p['codigo']."]\nStock restante: $stock unidades.\n".($stock===0?'Producto agotado.':'Revisar reposición.')."\nEl pedido fue registrado; esto no acredita pago recibido.");
     }
@@ -21,13 +26,19 @@ function detectar_pedidos_demorados(PDO $db,int $horas,?DateTimeImmutable $ahora
     foreach($q->fetchAll(PDO::FETCH_ASSOC) as $p){registrar_alerta_operativa($db,'demora-'.$p['id_pedido'],'pedido_demorado',(int)$p['id_pedido'],"⏳ TechStore · Pedido pendiente de revisión\nPedido #".$p['id_pedido']."\nCreado: ".$p['fecha_pedido']." (hora Perú)\nContinúa Pendiente después de $plazo. Revisa el pedido en Administración. No se cambió su estado.");$total++;}
     return $total;
 }
-function enviar_alertas_operativas(PDO $db,?callable $api=null,?array $config=null,int $maximo=5): array {
+function enviar_alertas_operativas(PDO $db,?callable $api=null,?array $config=null,int $maximo=5,?string $clave=null): array {
     $config=$config??configuracion_telegram();$api=$api??'telegram_api';
     if($config['token']===''||$config['chat_id']==='')return ['enviadas'=>0,'estado'=>'Sin configurar'];
     $limite=date('Y-m-d H:i:s',time()-300);
     $maximo=max(1,min(5,$maximo));
-    $q=$db->prepare("SELECT * FROM alertas_operativas WHERE estado='Pendiente' AND (intento IS NULL OR intento<=?) ORDER BY creada,clave LIMIT $maximo");$q->execute([$limite]);$enviadas=0;
+    $filtro=$clave!==null?' AND clave=?':'';$parametros=[$limite];if($clave!==null)$parametros[]=$clave;
+    $q=$db->prepare("SELECT * FROM alertas_operativas WHERE estado='Pendiente' AND (intento IS NULL OR intento<=?)$filtro ORDER BY CASE WHEN tipo='resumen_diario' THEN 0 ELSE 1 END,creada,clave LIMIT $maximo");$q->execute($parametros);$enviadas=0;
     foreach($q->fetchAll(PDO::FETCH_ASSOC) as $a){
+        if($a['tipo']==='resumen_diario'&&function_exists('configuracion_gestion')&&configuracion_gestion($db,'resumen_activo')!=='1'){$db->prepare("UPDATE alertas_operativas SET estado='Descartada' WHERE clave=? AND estado='Pendiente'")->execute([$a['clave']]);continue;}
+        if(in_array($a['tipo'],['stock_bajo','stock_recuperado'],true)){
+            $producto=$db->prepare('SELECT stock,estado FROM productos WHERE id_producto=?');$producto->execute([$a['entidad']]);$p=$producto->fetch(PDO::FETCH_ASSOC);
+            if(!$p||(int)$p['estado']!==1||($a['tipo']==='stock_bajo'&&(int)$p['stock']>5)||($a['tipo']==='stock_recuperado'&&(int)$p['stock']<=5)){$db->prepare("UPDATE alertas_operativas SET estado='Descartada' WHERE clave=? AND estado='Pendiente'")->execute([$a['clave']]);continue;}
+        }
         // Un pedido resuelto antes del envío no debe generar una alerta obsoleta.
         if($a['tipo']==='pedido_demorado'){$pedido=$db->prepare('SELECT estado FROM pedidos WHERE id_pedido=?');$pedido->execute([$a['entidad']]);if($pedido->fetchColumn()!=='Pendiente'){$cancelar=$db->prepare("UPDATE alertas_operativas SET estado='Descartada' WHERE clave=? AND estado='Pendiente'");$cancelar->execute([$a['clave']]);continue;}}
         $tomar=$db->prepare("UPDATE alertas_operativas SET estado='En curso',intento=? WHERE clave=? AND estado='Pendiente'");$tomar->execute([date('Y-m-d H:i:s'),$a['clave']]);if($tomar->rowCount()!==1)continue;
@@ -39,6 +50,7 @@ function enviar_alertas_operativas(PDO $db,?callable $api=null,?array $config=nu
 }
 function revisar_alertas_operativas(PDO $db): array {
     preparar_alertas_operativas($db);
+    if(function_exists('encolar_resumen_diario'))encolar_resumen_diario($db);
     $db->exec('CREATE TABLE IF NOT EXISTS alertas_configuracion (clave VARCHAR(100) PRIMARY KEY, valor VARCHAR(190) NOT NULL)');
     try{$inicio=$db->prepare('INSERT INTO alertas_configuracion(clave,valor) VALUES(?,?)');$inicio->execute(['demoras_desde',date('Y-m-d H:i:s')]);}catch(PDOException $e){if(!in_array((string)$e->getCode(),['23000','23505'],true))throw $e;}
     $desde=(string)$db->query("SELECT valor FROM alertas_configuracion WHERE clave='demoras_desde'")->fetchColumn();
@@ -46,5 +58,5 @@ function revisar_alertas_operativas(PDO $db): array {
     $horas=filter_var(getenv('PEDIDOS_DEMORA_HORAS'),FILTER_VALIDATE_INT);
     if($minutos===false&&$horas!==false&&$horas>0)detectar_pedidos_demorados($db,$horas,null,null,$desde);
     else { $minutos=$minutos===false?5:filter_var($minutos,FILTER_VALIDATE_INT);if($minutos===false)throw new RuntimeException('PEDIDOS_DEMORA_MINUTOS debe ser un entero.');detectar_pedidos_demorados($db,1,null,$minutos,$desde); }
-    return enviar_alertas_operativas($db);
+    return enviar_alertas_operativas($db,null,null,PHP_SAPI==='cli'?5:1);
 }

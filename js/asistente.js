@@ -53,7 +53,7 @@ function setBusy(value) {
     document.querySelectorAll('.message-retry').forEach(button => { button.disabled = value; });
     document.querySelector('#limpiar-chat').disabled = value;
     chatForm.setAttribute('aria-busy', String(value));
-    sendButton.firstChild.textContent = value ? 'Consultando… ' : 'Enviar ';
+    sendButton.firstChild.textContent = value ? 'Consultando… ' : 'Enviar pregunta ';
 }
 questionInput.addEventListener('input', () => { document.querySelector('#chat-contador').textContent = questionInput.value.length + '/500'; });
 questionInput.addEventListener('keydown', event => {

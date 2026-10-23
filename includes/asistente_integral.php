@@ -4,6 +4,7 @@ require_once __DIR__.'/consultas_asistente.php';
 function tipo_consulta_integral(string $pregunta): ?string {
     $t=normalizar_consulta_admin($pregunta);
     if(preg_match('/\b(borra|borrar|elimina|eliminar|modifica|modificar|actualiza|actualizar|cambia|cambiar|entrena|entrenar|cancela|cancelar)\b/u',$t))return null;
+    if(preg_match('/\bclientes?\b/u',$t)&&preg_match('/\b(cuantos?|cuantas?|cantidad|numero|total)\b/u',$t)&&!preg_match('/lista|muestra|detalle|frecuen|compr|pedido|hoy|ayer|mes|semana|desde|entre|marca|categoria/u',$t))return 'total_clientes';
     if(preg_match('/venta.*(?:categoria|marca)|(?:categoria|marca).*vendid/u',$t))return 'ventas_agrupadas';
     if(preg_match('/(?:por|cada)\s+categoria/u',$t))return 'categorias_integrales';
     if(preg_match('/(?:por|cada)\s+marca/u',$t))return 'marcas_integrales';
@@ -25,7 +26,11 @@ function respuesta_integral(PDO $db,string $pregunta,?string $directorio=null): 
     $t=normalizar_consulta_admin($pregunta);
     $r=['texto'=>'','enlaces'=>[],'fuente'=>'MySQL / MariaDB · consulta actual','fecha'=>date('d/m/Y H:i'),'modo'=>'local'];
     $link=static fn($texto,$url)=>['texto'=>$texto,'url'=>ruta($url)];
-    if(in_array($tipo,['categorias_integrales','marcas_integrales'],true)){
+    if($tipo==='total_clientes'){
+        $total=(int)$db->query('SELECT COUNT(*) FROM clientes')->fetchColumn();
+        $r['texto']='Tenemos '.number_format($total,0,'.',',').' '.($total===1?'cliente registrado.':'clientes registrados.');
+        $r['enlaces'][]=$link('Ver clientes','admin/clientes/listar.php');
+    }elseif(in_array($tipo,['categorias_integrales','marcas_integrales'],true)){
         $tabla=$tipo==='categorias_integrales'?'categorias':'marcas';$id=$tabla==='categorias'?'id_categoria':'id_marca';
         $total=(int)$db->query('SELECT COUNT(*) FROM '.$tabla)->fetchColumn();
         $filas=$db->query('SELECT a.'.$id.' id,a.nombre,a.estado,COUNT(p.id_producto) productos,COALESCE(SUM(CASE WHEN p.estado=1 THEN 1 ELSE 0 END),0) activos,COALESCE(SUM(CASE WHEN p.estado=1 THEN p.stock ELSE 0 END),0) unidades FROM '.$tabla.' a LEFT JOIN productos p ON p.'.$id.'=a.'.$id.' GROUP BY a.'.$id.',a.nombre,a.estado ORDER BY a.nombre LIMIT 30')->fetchAll();

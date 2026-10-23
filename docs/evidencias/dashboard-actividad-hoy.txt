@@ -1,0 +1,17 @@
+Verificación local del 19/10/2026 · America/Lima
+
+Comando: C:\xampp\php\php.exe scripts/pruebas_dashboard_predicciones.php
+Resultado: 19 pruebas correctas, SQLite y archivos temporales. Sin APIs externas.
+
+Incluye:
+- Compra de hoy visible sin entrenar y sin depender del corte del modelo.
+- Importe pendiente separado de ventas confirmadas.
+- Confirmación actualiza ventas en la siguiente lectura.
+- Cancelación excluida del importe confirmado.
+- Pronóstico conservado al registrar actividad real.
+- Actividad disponible aun sin informe ML.
+
+Comprobación de interfaz en localhost:
+Pestañas Ventas y Pedidos muestran dos pedidos creados hoy, ambos Pendientes.
+No se alteraron estados de pedidos reales para probar la corrección.
+La lectura automática se mantiene cada 30 segundos con la pestaña visible.
